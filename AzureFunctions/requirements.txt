@@ -1,0 +1,6 @@
+azure-functions
+mysql-connector-python
+bcrypt
+python-dotenv
+azure-storage-blob
+azure-core
