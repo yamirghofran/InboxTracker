@@ -1,0 +1,5 @@
+host.json => Lets you configure the Functions host. These settings apply when you're running functions locally and when you're running them in Azure.
+
+
+QUESTIONS:
+- Which module is passing the HTTPS parameters?
