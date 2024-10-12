@@ -150,11 +150,15 @@ export default function ExpenseDashboard({
   }
 
   const deleteExpense = useCallback((id: number) => {
+    // Trigger the form submission
     submit(
       { expenseId: id.toString(), intent: 'deleteExpense' },
       { method: 'post' }
-    )
-  }, [submit])
+    );
+
+    // Optimistically update the state
+    setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== id));
+  }, [submit]);
 
   return (
     <div className="min-h-screen bg-background p-8">
