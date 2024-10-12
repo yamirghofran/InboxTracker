@@ -1,30 +1,43 @@
-import azure.functions as func
-import datetime
+"""
+FUNCTIONS TO ADD:
+- Manager pays 
+- Dead queue thing
+
+"""
+
+import os
+import bcrypt # Hashing passwords
+import datetime # Is this necessary?
 import json
 import logging
-from shared.db_utils import execute_query
-from azure.storage.blob import BlobServiceClient, ContentSettings
-import os
-import bcrypt
-from azure.core.exceptions import ResourceExistsError
 import uuid
+
+import azure.functions as func
+from azure.storage.blob import BlobServiceClient, ContentSettings
+from azure.core.exceptions import ResourceExistsError
+
+from shared.db_utils import execute_query
+
 app = func.FunctionApp()
 
-@app.function_name(name="DeleteExpense")
-@app.route(route="DeleteExpense")
+@app.function_name(name="DeleteExpense") # Defines name of the function within the function app
+@app.route(route="DeleteExpense", methods=["DELETE"]) # Defines HTTP route for function invokation
 def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Delete a receipt from the database
+    """
     try:
-        expenseId = req.params.get('expenseId')
+        expenseId = req.params.get('expenseId') # Parameters passed via HTTPS
         userId = req.params.get('userId')
 
-        if not expenseId or not userId:
+        if not expenseId or not userId: # If no parameters are passed through the HTTPS request
             return func.HttpResponse("id and UserID are required", status_code=400)
 
         query = "DELETE FROM Expenses WHERE id = %s AND UserID = %s"
         result = execute_query(query, (expenseId, userId))
 
         if result.rowcount == 0:
-            return func.HttpResponse("Expense not found or user not authorized", status_code=404)
+            return func.HttpResponse("Expense not found or user not authorized", status_code=404) # user not authorized? would it not be user not found=
 
         return func.HttpResponse("Expense deleted successfully")
 
@@ -32,13 +45,17 @@ def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="GetCategories")
-@app.route(route="GetCategories")
+@app.route(route="GetCategories", methods=["GET"])
 def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Get all the the categories in the database
+    """
     try:
         query = "SELECT * FROM Categories"
         result = execute_query(query)
 
-        return func.HttpResponse(json.dumps(result), mimetype="application/json")
+        # Returns the result of the query as a JSON response
+        return func.HttpResponse(json.dumps(result), mimetype="application/json") 
 
     except Exception as e:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
@@ -46,6 +63,9 @@ def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
 @app.function_name(name="CreateExpense")
 @app.route(route="CreateExpense", methods=["POST"])
 def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
+    """
+    Creates a new expense and connects to blob storage to upload the receipt
+    """
     try:
         # Get the multipart form data
         form = req.form
@@ -124,7 +144,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
 @app.route(route="AuthenticateUser", methods=["POST"])
 def AuthenticateUser(req: func.HttpRequest) -> func.HttpResponse:
     try:
-        req_body = req.get_json()
+        req_body = req.get_json() # Transforms the JSON from the HTTPS request into a dictionary
         username = req_body.get('username')
         password = req_body.get('password')
 
@@ -137,9 +157,10 @@ def AuthenticateUser(req: func.HttpRequest) -> func.HttpResponse:
         if not result:
             return func.HttpResponse("Invalid username or password", status_code=401)
 
-        user = result[0]
+        # Reversing hash to check if password is correct
+        user = result[0] # Why is this a list? Several possible users with the same username?
         if bcrypt.checkpw(password.encode('utf-8'), user['passwordHash'].encode('utf-8')):
-            return func.HttpResponse(json.dumps({"id": user['id'], "username": user['username']}), mimetype="application/json")
+            return func.HttpResponse(json.dumps({"id": user['id'], "username": user['username']}), mimetype="application/json") # Why do you return this?
         else:
             return func.HttpResponse("Invalid username or password", status_code=401)
 
@@ -192,7 +213,7 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
         FROM Expenses e
         LEFT JOIN Categories c ON e.categoryId = c.id
         WHERE e.userId = %s
-        ORDER BY e.expenseDate DESC
+        ORDER BY e.id DESC
         """
         result = execute_query(query, (userId,))
 
