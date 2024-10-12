@@ -41,38 +41,8 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
 
         if not all([userId, amount, expenseDate]):
             return func.HttpResponse("UserID, Amount, and ExpenseDate are required", status_code=400)
-
-        receipt_url = None
-        if 'receipt' in req.files:
-            receipt_file = req.files['receipt']
-            
-            # Determine the content type based on the file extension
-            file_extension = os.path.splitext(receipt_file.filename)[1].lower()
-            content_type = 'application/octet-stream'  # Default content type
-
-            if file_extension in ['.jpg', '.jpeg']:
-                content_type = 'image/jpeg'
-            elif file_extension == '.png':
-                content_type = 'image/png'
-            elif file_extension == '.pdf':
-                content_type = 'application/pdf'
-
-            # Upload the file to blob storage
-            connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
-            blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-            container_name = "receipts"
-            blob_name = f"{uuid.uuid4()}{file_extension}"
-            blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
-            
-            try:
-                blob_client.upload_blob(
-                    receipt_file.read(),
-                    content_settings=ContentSettings(content_type=content_type)
-                )
-                receipt_url = blob_client.url
-            except ResourceExistsError:
-                return func.HttpResponse("A blob with this name already exists", status_code=400)
-
+        
+        # Query first, then store in blob storage later
         query = """
         INSERT INTO Expenses (userId, categoryId, amount, description, notes, receiptURL, expenseDate)
         VALUES (%s, %s, %s, %s, %s, %s, %s)
@@ -93,6 +63,37 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
             "receiptURL": receipt_url,
             "expenseDate": expenseDate
         }
+
+        receipt_url = None
+        if 'receipt' in req.files:
+            receipt_file = req.files['receipt']
+            
+            # Determine the content type based on the file extension
+            file_extension = os.path.splitext(receipt_file.filename)[1].lower()
+            content_type = 'application/octet-stream'  # Default content type
+
+            if file_extension in ['.jpg', '.jpeg']:
+                content_type = 'image/jpeg'
+            elif file_extension == '.png':
+                content_type = 'image/png'
+            elif file_extension == '.pdf':
+                content_type = 'application/pdf'
+
+            # Upload the file to blob storage
+            connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
+            blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+            container_name = "receipts"
+            blob_name = f"{userId}_{new_expense_id}_{file_extension}"
+            blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+            
+            try:
+                blob_client.upload_blob(
+                    receipt_file.read(),
+                    content_settings=ContentSettings(content_type=content_type)
+                )
+                receipt_url = blob_client.url
+            except ResourceExistsError:
+                return func.HttpResponse("A blob with this name already exists", status_code=400)
 
         return func.HttpResponse(json.dumps(new_expense), status_code=201, mimetype="application/json")
 
