@@ -18,6 +18,7 @@ from azure.core.exceptions import ResourceExistsError
 
 from shared.db_utils import execute_query
 
+
 app = func.FunctionApp()
 
 @app.function_name(name="CreateExpense")

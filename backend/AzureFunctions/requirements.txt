@@ -1,3 +1,4 @@
+# Versions need to be specified 
 azure-functions
 mysql-connector-python
 bcrypt

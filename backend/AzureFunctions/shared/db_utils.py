@@ -4,10 +4,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-def get_db_connection():
-    """ Sets up connection to the database """
+def get_db_connection(): 
+    """
+    Connects the application to the database.
+    Uses environmental variables for the database credentials (from host.json).
+    """
     return mysql.connector.connect(
-        host=os.environ['DB_HOST'],
+        host=os.environ['DB_HOST'], # How do host.json got to be einvormental variables?
         user=os.environ['DB_USER'],
         password=os.environ['DB_PASSWORD'],
         database=os.environ['DB_NAME']
@@ -19,7 +22,10 @@ def execute_query(query, params=None) -> dict | int | None:
         - dictionary if query = SELECT
         - id of last row if query = INSERT/UPDATE/DELETE
     """
-    conn = get_db_connection()
+    """
+    Who invokes this function?
+    """
+    conn = get_db_connection() 
     cursor = conn.cursor(dictionary=True) # Returns result of query as a dictionary (attribute:value)
     try:
         if params:
