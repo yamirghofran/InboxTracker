@@ -8,6 +8,7 @@ import os
 import bcrypt
 from azure.core.exceptions import ResourceExistsError
 import uuid
+
 app = func.FunctionApp()
 
 @app.function_name(name="DeleteExpense")
