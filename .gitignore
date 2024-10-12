@@ -1,4 +1,4 @@
-node_modules
-/.cache
-/build
+frontend/node_modules
+frontend/.cache
+frontend/build
 .env
