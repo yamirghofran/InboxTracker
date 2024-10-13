@@ -3,3 +3,6 @@ frontend/.cache
 frontend/build
 .env
 .venv
+.DS_Store
+backend/.DS_Store
+backend/AzureFunctions/.DS_Store

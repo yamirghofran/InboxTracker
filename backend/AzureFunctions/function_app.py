@@ -168,12 +168,21 @@ def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
         query = "SELECT * FROM Categories"
         result = execute_query(query)
 
-        # Returns the result of the query as a JSON response
-        return func.HttpResponse(json.dumps(result), mimetype="application/json") 
+        # Custom serialization function for datetime objects
+        def datetime_serializer(obj):
+            if isinstance(obj, datetime.datetime):
+                return obj.isoformat()
+            raise TypeError("Type not serializable")
+
+        # Returns the result of the query as a JSON response with datetime serialization
+        return func.HttpResponse(
+            json.dumps(result, default=datetime_serializer),
+            mimetype="application/json"
+        )
 
     except Exception as e:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
-
+    
 
 @app.function_name(name="GetExpenses")
 @app.route(route="GetExpenses")
