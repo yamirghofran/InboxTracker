@@ -36,7 +36,7 @@ async function getCategories(): Promise<Category[]> {
   return response.json();
 }
 
-async function createExpense(expense: Omit<Expense, 'id'>, receiptFile?: File): Promise<Expense> {
+async function createExpense(expense: Omit<Expense, 'id' | 'createdAt' | 'updatedAt'>, receiptFile?: File): Promise<Expense> {
   const formData = new FormData();
   formData.append('expense', JSON.stringify(expense));
   if (receiptFile) {
