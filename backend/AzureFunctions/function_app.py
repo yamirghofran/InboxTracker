@@ -109,8 +109,9 @@ def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
         query = "DELETE FROM Expenses WHERE id = %s AND UserID = %s"
         result = execute_query(query, (expenseId, userId))
 
-        if result.rowcount == 0:
-            return func.HttpResponse("Expense not found or user not authorized", status_code=404) # user not authorized? would it not be user not found=
+        # Access rowcount as a key in the dictionary
+        if result['rowcount'] == 0:
+            return func.HttpResponse("Expense not found or user not authorized", status_code=404)
 
         return func.HttpResponse("Expense deleted successfully")
 
