@@ -16,12 +16,7 @@ def get_db_connection():
         database=os.environ['DB_NAME']
     )
 
-def execute_query(query, params=None) -> dict | int | None:
-    """ Executes a query and returns the result 
-    Returns:
-        - dictionary if query = SELECT
-        - id of last row if query = INSERT/UPDATE/DELETE
-    """
+def execute_query(query, params=None):
     """
     Who invokes this function?
     """
@@ -34,7 +29,7 @@ def execute_query(query, params=None) -> dict | int | None:
             cursor.execute(query)
         
         if query.strip().upper().startswith("SELECT"):
-            result = cursor.fetchall() # Returning dict
+            result = cursor.fetchall() 
         else:
             conn.commit()
             result = cursor.lastrowid if cursor.lastrowid else None 
