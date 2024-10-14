@@ -1,21 +1,12 @@
-"""
-FUNCTIONS TO ADD:
-- Manager pays 
-- Dead queue thing
-
-"""
-
 import os
-import bcrypt # Hashing passwords
-import datetime # Is this necessary?
+import bcrypt
+import datetime
 import json
 import logging
 import uuid
-
 import azure.functions as func
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
-
 from shared.db_utils import execute_query
 
 
@@ -84,7 +75,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
             connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
             blob_service_client = BlobServiceClient.from_connection_string(connect_str)
             container_name = "receipts"
-            blob_name = f"{userId}_{new_expense_id}_{file_extension}"
+            blob_name = f"{uuid.uuid4()}{file_extension}"
             blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
             
             try:
@@ -197,7 +188,7 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
         FROM Expenses e
         LEFT JOIN Categories c ON e.categoryId = c.id
         WHERE e.userId = %s
-        ORDER BY e.id DESC
+        ORDER BY e.expenseDate DESC
         """
         result = execute_query(query, (userId,))
 
