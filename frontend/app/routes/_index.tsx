@@ -66,8 +66,9 @@ async function addCategory(name: string): Promise<Category> {
 
 // Add this new function near the top of the file with the other API functions
 async function deleteExpense(expenseId: number): Promise<void> {
+  console.log(`Deleting expense with ID: ${expenseId}, userId: ${HARDCODED_USER_ID}`);
   const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/DeleteExpense?${AZURE_FUNCTION_KEY_CODE}&expenseId=${expenseId}&userId=${HARDCODED_USER_ID}`, {
-    method: 'POST',
+    method: 'DELETE',
   });
   if (!response.ok) throw new Error('Failed to delete expense');
 }
@@ -110,6 +111,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     if (intent === "addExpense") {
       const expense = {
         userId: parseInt(formData.get("userId") as string),
+        companyName: formData.get("companyName") as string,
         amount: parseFloat(formData.get("amount") as string),
         description: formData.get("description") as string,
         expenseDate: formData.get("expenseDate") as string,

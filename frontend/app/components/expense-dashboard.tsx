@@ -201,6 +201,7 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
 }) {
   const [amount, setAmount] = useState('')
   const [description, setDescription] = useState('')
+  const [companyName, setCompanyName] = useState('')
   const [expenseDate, setExpenseDate] = useState('')
   const [categoryId, setCategoryId] = useState('')
   const [notes, setNotes] = useState('')
@@ -224,6 +225,7 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
     // })
     setAmount('')
     setDescription('')
+    setCompanyName('')
     setExpenseDate('')
     setCategoryId('')
     setNotes('')
@@ -261,6 +263,7 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
     <Form method="post" className="space-y-4 mt-4" encType="multipart/form-data">
       <input type="hidden" name="intent" value="addExpense" />
       <input type="hidden" name="userId" value={userId} />
+      <input type="hidden" name="companyName" value={companyName} />
       <div>
         <Label htmlFor="amount">Amount</Label>
         <Input
@@ -271,6 +274,17 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
           onChange={(e) => setAmount(e.target.value)}
           placeholder="Enter amount"
           required
+        />
+      </div>
+      <div>
+        <Label htmlFor="companyName">Company Name</Label>
+        <Input
+          id="companyName"
+          name="companyName"
+          type="text"
+          value={companyName}
+          onChange={(e) => setCompanyName(e.target.value)}
+          placeholder="Enter company name"
         />
       </div>
       <div>

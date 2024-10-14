@@ -26,6 +26,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
         expense_data = json.loads(form['expense'])
         userId = expense_data.get('userId')
         categoryId = expense_data.get('categoryId')
+        companyName = expense_data.get('companyName')
         amount = expense_data.get('amount')
         description = expense_data.get('description')
         notes = expense_data.get('notes')
@@ -34,30 +35,9 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
         if not all([userId, amount, expenseDate]):
             return func.HttpResponse("UserID, Amount, and ExpenseDate are required", status_code=400)
         
-        # Query first, then store in blob storage later
-        query = """
-        INSERT INTO Expenses (userId, categoryId, amount, description, notes, receiptURL, expenseDate)
-        VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-        params = (userId, categoryId, amount, description, notes, receipt_url, expenseDate)
-        result = execute_query(query, params)
-        new_expense_id = result['lastrowid']
-
-        if new_expense_id is None:
-            return func.HttpResponse("Failed to retrieve the new expense ID", status_code=500)
-
-        new_expense = {
-            "id": new_expense_id,
-            "userId": userId,
-            "categoryId": categoryId,
-            "amount": amount,
-            "description": description,
-            "notes": notes,
-            "receiptURL": receipt_url,
-            "expenseDate": expenseDate
-        }
-
+        # Initialize receipt_url before using it
         receipt_url = None
+
         if 'receipt' in req.files:
             receipt_file = req.files['receipt']
             
@@ -76,7 +56,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
             connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
             blob_service_client = BlobServiceClient.from_connection_string(connect_str)
             container_name = "receipts"
-            blob_name = f"{uuid.uuid4()}{file_extension}"
+            blob_name = f"{userId}_{uuid.uuid4()}{file_extension}"
             blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
             
             try:
@@ -87,6 +67,30 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
                 receipt_url = blob_client.url
             except ResourceExistsError:
                 return func.HttpResponse("A blob with this name already exists", status_code=400)
+
+        # Insert the expense into the database with or without the receipt URL
+        query = """
+        INSERT INTO Expenses (userId, categoryId, companyName, amount, description, notes, receiptURL, expenseDate)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        params = (userId, categoryId, companyName, amount, description, notes, receipt_url, expenseDate)
+        result = execute_query(query, params)
+        new_expense_id = result['lastrowid']
+
+        if new_expense_id is None:
+            return func.HttpResponse("Failed to retrieve the new expense ID", status_code=500)
+
+        new_expense = {
+            "id": new_expense_id,
+            "userId": userId,
+            "categoryId": categoryId,
+            "companyName": companyName,
+            "amount": amount,
+            "description": description,
+            "notes": notes,
+            "receiptURL": receipt_url,
+            "expenseDate": expenseDate
+        }
 
         return func.HttpResponse(json.dumps(new_expense), status_code=201, mimetype="application/json")
 
