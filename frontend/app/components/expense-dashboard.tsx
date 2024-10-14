@@ -51,7 +51,7 @@ const ExpenseCard = ({ expense, onDelete }: { expense: ExpenseWithCategoryName; 
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader className="relative pb-2">
         <div className="flex justify-between items-start">
-          <h2 className="text-lg font-semibold">{expense.description}</h2>
+          <h2 className="text-lg font-semibold">{expense.description} - {expense.companyName}</h2>
           <span className="text-lg font-semibold">${expense.amount?.toFixed(2) ?? 'N/A'}</span>
         </div>
         <Badge variant="secondary" className="mt-2 max-w-fit">
