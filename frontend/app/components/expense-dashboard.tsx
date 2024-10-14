@@ -25,12 +25,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog"
-import { PencilIcon, TrashIcon } from "lucide-react"
+import { PencilIcon, TrashIcon, Loader2 } from "lucide-react"
 import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { Badge } from "~/components/ui/badge"
 import { Form, useSubmit, useNavigation } from "@remix-run/react"
 import { format } from 'date-fns'
 import { ExpenseWithCategoryName, Category, Expense } from '~/types'
+import { extractExpense } from '~/util';
 const HARDCODED_USER_ID = 1
 const sas_token = 'sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2025-10-11T17:59:41Z&st=2024-10-11T09:59:41Z&spr=https,http&sig=6y0SwjdB2sDHQWUNVzfrs3WsTQ2lLJ5crw9iITrefEc%3D'
 
@@ -147,12 +148,7 @@ export default function ExpenseDashboard({
     }
   }, [actionData, categories]); // Ensure categories is included in the dependency array
 
-  const addCategory = (name: string) => {
-    submit(
-      { categoryName: name, intent: 'addCategory' },
-      { method: 'post' }
-    )
-  }
+  
 
   const deleteExpense = useCallback((id: number) => {
     // Trigger the form submission
@@ -182,7 +178,7 @@ export default function ExpenseDashboard({
               Upload a receipt, fill in the expense details, and select a category.
             </SheetDescription>
           </SheetHeader>
-          <ExpenseForm categories={categories} onAddCategory={addCategory} userId={userId} />
+          <ExpenseForm categories={categories}  userId={userId} />
         </SheetContent>
       </Sheet>
 
@@ -199,9 +195,8 @@ export default function ExpenseDashboard({
   )
 }
 
-function ExpenseForm({ categories, onAddCategory, userId }: { 
+function ExpenseForm({ categories, userId }: { 
   categories: Category[],
-  onAddCategory: (name: string) => void,
   userId: number
 }) {
   const [amount, setAmount] = useState('')
@@ -211,8 +206,7 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
   const [categoryId, setCategoryId] = useState('')
   const [notes, setNotes] = useState('')
   const [receiptURL, setReceiptURL] = useState<string | null>(null)
-  const [isNewCategoryDialogOpen, setIsNewCategoryDialogOpen] = useState(false)
-  const [newCategoryName, setNewCategoryName] = useState('')
+  const [isLoadingExpense, setIsLoadingExpense] = useState(false)
 
   useEffect(() => {
     setCategoryId('')
@@ -238,30 +232,37 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader()
+      const reader = new FileReader();
       reader.onloadend = () => {
-        setReceiptURL(reader.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
+        const fileContent = reader.result as string;
+        setReceiptURL(fileContent);
 
-  const handleAddCategory = () => {
-    if (newCategoryName) {
-      onAddCategory(newCategoryName)
-      setNewCategoryName('')
-      setIsNewCategoryDialogOpen(false)
+        // Only process if fields are empty
+        if (!amount && !description && !companyName && !expenseDate && !notes && !categoryId) {
+          setIsLoadingExpense(true);
+          extractExpense(fileContent).then(expenseData => {
+            console.log(expenseData);
+            setAmount(expenseData.amount);
+            setDescription(expenseData.description);
+            setCompanyName(expenseData.companyName);
+            setExpenseDate(expenseData.date);
+            setNotes(expenseData.notes);
+            setCategoryId(expenseData.category);
+          }).catch(error => {
+            console.error("Error extracting expense:", error);
+          }).finally(() => {
+            setIsLoadingExpense(false);
+          });
+        }
+      };
+      reader.readAsDataURL(file);
     }
-  }
+  };
 
   const handleCategoryChange = (value: string) => {
-    if (value === 'new') {
-      setIsNewCategoryDialogOpen(true)
-    } else {
-      setCategoryId(value)
-    }
+    setCategoryId(value)
   }
 
   return (
@@ -276,6 +277,7 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
           name="amount"
           type="number"
           value={amount}
+          disabled={isLoadingExpense}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="Enter amount"
           required
@@ -287,6 +289,7 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
           id="companyName"
           name="companyName"
           type="text"
+          disabled={isLoadingExpense}
           value={companyName}
           onChange={(e) => setCompanyName(e.target.value)}
           placeholder="Enter company name"
@@ -298,6 +301,7 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
           id="description"
           name="description"
           value={description}
+          disabled={isLoadingExpense}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Enter description"
           required
@@ -310,13 +314,14 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
           name="expenseDate"
           type="date"
           value={expenseDate}
+          disabled={isLoadingExpense}
           onChange={(e) => setExpenseDate(e.target.value)}
           required
         />
       </div>
       <div>
         <Label htmlFor="categoryId">Category</Label>
-        <Select name="categoryId" value={categoryId} onValueChange={handleCategoryChange}>
+        <Select name="categoryId" value={categoryId} onValueChange={handleCategoryChange} disabled={isLoadingExpense}>
           <SelectTrigger>
             <SelectValue placeholder="Select a category" />
           </SelectTrigger>
@@ -326,9 +331,6 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
                 {cat.name}
               </SelectItem>
             ))}
-            <SelectItem value="new">
-              <span className="text-blue-500">+ Add new category</span>
-            </SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -338,6 +340,7 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
           id="notes"
           name="notes"
           value={notes}
+          disabled={isLoadingExpense}
           onChange={(e) => setNotes(e.target.value)}
           placeholder="Add any additional notes"
           className="h-20"
@@ -350,32 +353,14 @@ function ExpenseForm({ categories, onAddCategory, userId }: {
           name="receiptURL"
           type="file"
           onChange={handleFileChange}
+          disabled={isLoadingExpense}
           accept="image/*"
         />
       </div>
-      <Button type="submit">Add Expense</Button>
-
-      <Dialog open={isNewCategoryDialogOpen} onOpenChange={setIsNewCategoryDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add New Category</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="new-category" className="text-right">
-                Name
-              </Label>
-              <Input
-                id="new-category"
-                value={newCategoryName}
-                onChange={(e) => setNewCategoryName(e.target.value)}
-                className="col-span-3"
-              />
-            </div>
-          </div>
-          <Button onClick={handleAddCategory}>Add Category</Button>
-        </DialogContent>
-      </Dialog>
+      <Button type="submit" disabled={isLoadingExpense}>
+        {isLoadingExpense ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
+        {isLoadingExpense ? 'Processing...' : 'Add Expense'}
+      </Button>
     </Form>
   )
 }
