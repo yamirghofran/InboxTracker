@@ -18,7 +18,8 @@ def get_db_connection():
 
 def execute_query(query, params=None):
     """
-    Who invokes this function?
+    Executes a SQL query with optional parameters.
+    Returns the result of the query.
     """
     conn = get_db_connection() 
     cursor = conn.cursor(dictionary=True) # Returns result of query as a dictionary (attribute:value)
@@ -32,7 +33,11 @@ def execute_query(query, params=None):
             result = cursor.fetchall() 
         else:
             conn.commit()
-            result = cursor.lastrowid if cursor.lastrowid else None 
+            # For INSERT queries, return both rowcount and lastrowid
+            result = {
+                'rowcount': cursor.rowcount,
+                'lastrowid': cursor.lastrowid
+            }
 
         return result
     finally:

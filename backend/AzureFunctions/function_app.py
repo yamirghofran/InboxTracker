@@ -40,7 +40,8 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
         VALUES (%s, %s, %s, %s, %s, %s, %s)
         """
         params = (userId, categoryId, amount, description, notes, receipt_url, expenseDate)
-        new_expense_id = execute_query(query, params)
+        result = execute_query(query, params)
+        new_expense_id = result['lastrowid']
 
         if new_expense_id is None:
             return func.HttpResponse("Failed to retrieve the new expense ID", status_code=500)
