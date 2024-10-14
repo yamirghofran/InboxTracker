@@ -56,7 +56,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
             connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
             blob_service_client = BlobServiceClient.from_connection_string(connect_str)
             container_name = "receipts"
-            blob_name = f"{userId}_{uuid.uuid4()}{file_extension}"
+            blob_name = f"{userId}_{expenseDate}_{uuid.uuid4()}{file_extension}"
             blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
             
             try:
