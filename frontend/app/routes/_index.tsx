@@ -40,7 +40,7 @@ async function createExpense(expense: Omit<Expense, 'id' | 'createdAt' | 'update
   const formData = new FormData();
   formData.append('expense', JSON.stringify(expense));
   if (receiptFile) {
-    formData.append('receipt', receiptFile, receiptFile.name);
+    formData.append('receipt', receiptFile);
   }
 
   const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/CreateExpense?${AZURE_FUNCTION_KEY_CODE}`, {
@@ -54,14 +54,18 @@ async function createExpense(expense: Omit<Expense, 'id' | 'createdAt' | 'update
   return response.json();
 }
 
-async function addCategory(name: string): Promise<Category> {
-  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/AddCategory${AZURE_FUNCTION_KEY_CODE}`, {
-    method: 'POST',
+async function updateExpense(expense: Omit<Expense, 'createdAt' | 'updatedAt'>): Promise<void> {
+  console.log(`Updating expense with ID: ${expense.id}, userId: ${HARDCODED_USER_ID}`);
+  console.log(`Expense data: ${JSON.stringify(expense)}`);
+  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/UpdateExpense?${AZURE_FUNCTION_KEY_CODE}`, {
+    method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name }),
+    body: JSON.stringify(expense),
   });
-  if (!response.ok) throw new Error('Failed to add category');
-  return response.json();
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to update expense: ${errorText}`);
+  }
 }
 
 // Add this new function near the top of the file with the other API functions
@@ -110,7 +114,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     if (intent === "addExpense") {
       const expense = {
-        userId: parseInt(formData.get("userId") as string),
+        userId: HARDCODED_USER_ID,
         companyName: formData.get("companyName") as string,
         amount: parseFloat(formData.get("amount") as string),
         description: formData.get("description") as string,
@@ -123,16 +127,25 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       return json({ newExpense });
     }
 
-    if (intent === "addCategory") {
-      const categoryName = formData.get("categoryName") as string;
-      const newCategory = await addCategory(categoryName);
-      return json({ newCategory });
-    }
-
     if (intent === "deleteExpense") {
       const expenseId = parseInt(formData.get("expenseId") as string);
       await deleteExpense(expenseId);
       return json({ deletedExpenseId: expenseId });
+    }
+
+    if (intent === "updateExpense") {
+      const updatedExpense = {
+        id: parseInt(formData.get("expenseId") as string),
+        userId: HARDCODED_USER_ID,
+        companyName: formData.get("companyName") as string,
+        amount: parseFloat(formData.get("amount") as string),
+        description: formData.get("description") as string,
+        expenseDate: formData.get("expenseDate") as string,
+        categoryId: parseInt(formData.get("categoryId") as string),
+        notes: formData.get("notes") as string,
+      };
+      await updateExpense(updatedExpense);
+      return json({ updatedExpenseId: updatedExpense.id });
     }
 
     return json({ error: "Invalid action" }, { status: 400 });
@@ -159,3 +172,6 @@ export default function ExpensesRoute() {
     />
   );
 }
+
+
+

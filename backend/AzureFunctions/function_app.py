@@ -127,11 +127,12 @@ def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
 def UpdateExpense(req: func.HttpRequest) -> func.HttpResponse:
     try:
         req_body = req.get_json()
-        expenseId = req_body.get('expenseId')
+        expenseId = req_body.get('id')
         userId = req_body.get('userId')
         categoryId = req_body.get('categoryId')
         amount = req_body.get('amount')
         description = req_body.get('description')
+        companyName = req_body.get('companyName')
         notes = req_body.get('notes')
         receiptURL = req_body.get('receiptURL')
         expenseDate = req_body.get('expenseDate')
@@ -141,13 +142,13 @@ def UpdateExpense(req: func.HttpRequest) -> func.HttpResponse:
 
         query = """
         UPDATE Expenses
-        SET categoryId = %s, amount = %s, description = %s, notes = %s, receiptURL = %s, expenseDate = %s
+        SET categoryId = %s, amount = %s, description = %s, notes = %s, companyName = %s, expenseDate = %s
         WHERE id = %s AND userId = %s
         """
-        params = (categoryId, amount, description, notes, receiptURL, expenseDate, expenseId, userId)
+        params = (categoryId, amount, description, notes, companyName, expenseDate, expenseId, userId)
         result = execute_query(query, params)
 
-        if result.rowcount == 0:
+        if result['rowcount'] == 0:
             return func.HttpResponse("Expense not found or user not authorized", status_code=404)
 
         return func.HttpResponse("Expense updated successfully")
