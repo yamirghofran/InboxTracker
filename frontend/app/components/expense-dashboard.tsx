@@ -128,7 +128,12 @@ export default function ExpenseDashboard({
   useEffect(() => {
     if (actionData?.newExpense) {
       setExpenses(prevExpenses => {
-        const updatedExpenses = [...prevExpenses, actionData.newExpense];
+        const category = categories.find(cat => cat.id === actionData.newExpense.categoryId);
+        const newExpenseWithCategoryName = {
+          ...actionData.newExpense,
+          categoryName: category ? category.name : 'Unknown Category'
+        };
+        const updatedExpenses = [...prevExpenses, newExpenseWithCategoryName];
         // Sort expenses by date in descending order
         return updatedExpenses.sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
       });
@@ -140,7 +145,7 @@ export default function ExpenseDashboard({
     if (actionData?.deletedExpenseId) {
       setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== actionData.deletedExpenseId));
     }
-  }, [actionData]);
+  }, [actionData, categories]); // Ensure categories is included in the dependency array
 
   const addCategory = (name: string) => {
     submit(
