@@ -233,23 +233,37 @@ async def Signup(req: func.HttpRequest) -> func.HttpResponse:
         req_body = req.get_json()
         email = req_body.get('email')
         password = req_body.get('password')
+        firstName = req_body.get('firstName')
+        lastName = req_body.get('lastName')
 
-        if not email or not password:
-            return func.HttpResponse("Email and password are required", status_code=400)
+        if not all([email, password, firstName, lastName]):
+            return func.HttpResponse(
+                json.dumps({"error": "Email, password, firstName, and lastName are required"}),
+                status_code=400,
+                mimetype="application/json"
+            )
 
-        new_user_id = await createUser(email, password)
+        new_user_id = await createUser(email, password, firstName, lastName)
 
         if new_user_id:
             return func.HttpResponse(
-                json.dumps({"id": new_user_id, "email": email}),
+                json.dumps({"id": new_user_id, "email": email, "firstName": firstName, "lastName": lastName}),
                 status_code=201,
                 mimetype="application/json"
             )
         else:
-            return func.HttpResponse("Email already exists", status_code=409)
+            return func.HttpResponse(
+                json.dumps({"error": "Email already exists"}),
+                status_code=409,
+                mimetype="application/json"
+            )
 
     except Exception as e:
-        return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
+        return func.HttpResponse(
+            json.dumps({"error": f"An error occurred: {str(e)}"}),
+            status_code=500,
+            mimetype="application/json"
+        )
     
 @app.function_name(name="ProcessDeadLetterQueue")
 @app.queue_trigger(arg_name="msg", queue_name="dead-letter-queue", connection="AzureWebJobsStorage")
