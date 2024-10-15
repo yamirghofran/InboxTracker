@@ -240,7 +240,11 @@ async def Signup(req: func.HttpRequest) -> func.HttpResponse:
         new_user_id = await createUser(email, password)
 
         if new_user_id:
-            return func.HttpResponse(json.dumps({"id": new_user_id, "email": email}), status_code=201, mimetype="application/json")
+            return func.HttpResponse(
+                json.dumps({"id": new_user_id, "email": email}),
+                status_code=201,
+                mimetype="application/json"
+            )
         else:
             return func.HttpResponse("Email already exists", status_code=409)
 

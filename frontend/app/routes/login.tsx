@@ -45,7 +45,7 @@ export async function loader({
   }
 
   async function validateCredentials(email: string, password: string) {
-    const response = await fetch(`/api/Login`, {
+    const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/Login?${AZURE_FUNCTION_KEY_CODE}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

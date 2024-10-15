@@ -32,7 +32,7 @@ export default function SignupForm() {
     setError("")
 
     try {
-      const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/CreateExpense?${AZURE_FUNCTION_KEY_CODE}`, {
+      const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/Signup?${AZURE_FUNCTION_KEY_CODE}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
