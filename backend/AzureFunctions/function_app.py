@@ -7,7 +7,9 @@ import uuid
 import azure.functions as func
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
-from shared.db_utils import execute_query
+from shared.db_utils import execute_query, validateCredentials, createUser
+from azure.storage.queue import QueueClient
+
 
 
 app = func.FunctionApp()
@@ -65,6 +67,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
                     content_settings=ContentSettings(content_type=content_type)
                 )
                 receipt_url = blob_client.url
+
             except ResourceExistsError:
                 return func.HttpResponse("A blob with this name already exists", status_code=400)
 
@@ -95,6 +98,13 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(json.dumps(new_expense), status_code=201, mimetype="application/json")
 
     except Exception as e:
+
+        error_message = f"An error occurred in CreateExpense: {str(e)}"
+        logging.error(error_message)
+        
+        # Send to dead-letter-queue
+        send_to_dead_letter_queue(error_message, "CreateExpense", req.get_json())
+
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="DeleteExpense") # Defines name of the function within the function app
@@ -120,6 +130,9 @@ def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Expense deleted successfully")
 
     except Exception as e:
+        error_message = f"An error occurred in DeleteExpense: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "DeleteExpense", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 @app.function_name(name="UpdateExpense")
@@ -154,6 +167,9 @@ def UpdateExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Expense updated successfully")
 
     except Exception as e:
+        error_message = f"An error occurred in UpdateExpense: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "UpdateExpense", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 @app.function_name(name="GetCategories")
@@ -163,7 +179,7 @@ def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
     Get all the the categories in the database
     """
     try:
-        query = "SELECT * FROM Categories"
+        query = "SELECT id, name FROM Categories"
         result = execute_query(query)
 
         # Custom serialization function for datetime objects
@@ -179,6 +195,9 @@ def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception as e:
+        error_message = f"An error occurred in GetCategories: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "GetCategories", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 
@@ -191,7 +210,7 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
             return func.HttpResponse("UserID is required", status_code=400)
 
         query = """
-        SELECT e.*, c.name
+        SELECT e.*, c.name as categoryName
         FROM Expenses e
         LEFT JOIN Categories c ON e.categoryId = c.id
         WHERE e.userId = %s
@@ -199,35 +218,144 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
         """
         result = execute_query(query, (userId,))
 
+        # Ensure categoryName is never null
+        for expense in result:
+            expense['categoryName'] = expense['categoryName'] or 'Uncategorized'
+
         return func.HttpResponse(json.dumps(result, default=str), mimetype="application/json")
 
     except Exception as e:
+        error_message = f"An error occurred in GetExpenses: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "GetExpenses", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 
-@app.function_name(name="AuthenticateUser")
-@app.route(route="AuthenticateUser", methods=["POST"])
-def AuthenticateUser(req: func.HttpRequest) -> func.HttpResponse:
+@app.function_name(name="Login")
+@app.route(route="Login", methods=["POST"])
+async def Login(req: func.HttpRequest) -> func.HttpResponse:
     try:
-        req_body = req.get_json() # Transforms the JSON from the HTTPS request into a dictionary
-        username = req_body.get('username')
+        req_body = req.get_json()
+        email = req_body.get('email')
         password = req_body.get('password')
 
-        if not username or not password:
-            return func.HttpResponse("Username and password are required", status_code=400)
+        if not email or not password:
+            return func.HttpResponse("Email and password are required", status_code=400)
 
-        query = "SELECT id, username, passwordHash FROM Users WHERE username = %s"
-        result = execute_query(query, (username,))
+        user_id = await validateCredentials(email, password)
 
-        if not result:
-            return func.HttpResponse("Invalid username or password", status_code=401)
-
-        # Reversing hash to check if password is correct
-        user = result[0] # Why is this a list? Several possible users with the same username?
-        if bcrypt.checkpw(password.encode('utf-8'), user['passwordHash'].encode('utf-8')):
-            return func.HttpResponse(json.dumps({"id": user['id'], "username": user['username']}), mimetype="application/json") # Why do you return this?
+        if user_id:
+            return func.HttpResponse(json.dumps({"id": user_id, "email": email}), mimetype="application/json")
         else:
-            return func.HttpResponse("Invalid username or password", status_code=401)
+            raise Exception("Invalid email or password")
 
     except Exception as e:
+        error_message = f"An error occurred in Login: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "Login", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
+
+@app.function_name(name="Signup")
+@app.route(route="Signup", methods=["POST"])
+async def Signup(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        req_body = req.get_json()
+        logging.info(f"Received signup request: {req_body}")
+        
+        email = req_body.get('email')
+        password = req_body.get('password')
+        firstName = req_body.get('firstName')
+        lastName = req_body.get('lastName')
+
+        if not all([email, password, firstName, lastName]):
+            missing_fields = [field for field in ['email', 'password', 'firstName', 'lastName'] if not req_body.get(field)]
+            error_message = f"Missing required fields: {', '.join(missing_fields)}"
+            logging.warning(error_message)
+            return func.HttpResponse(
+                json.dumps({"error": error_message}),
+                status_code=400,
+                mimetype="application/json"
+            )
+
+        logging.info(f"Creating user with email: {email}")
+        new_user_id = await createUser(email, password, firstName, lastName)
+
+        if new_user_id:
+            logging.info(f"User created successfully with ID: {new_user_id}")
+            return func.HttpResponse(
+                json.dumps({"id": new_user_id, "email": email, "firstName": firstName, "lastName": lastName}),
+                status_code=201,
+                mimetype="application/json"
+            )
+        else:
+            logging.warning(f"Email already exists or user creation failed: {email}")
+            return func.HttpResponse(
+                json.dumps({"error": "Email already exists or user creation failed"}),
+                status_code=409,
+                mimetype="application/json"
+            )
+
+    except Exception as e:
+        error_message = f"An error occurred in Signup: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "Signup", req.get_json())
+
+
+
+        return func.HttpResponse(
+            json.dumps({"error": f"An error occurred: {str(e)}"}),
+            status_code=500,
+            mimetype="application/json"
+        )
+    
+@app.function_name(name="ProcessDeadLetterQueue")
+@app.queue_trigger(arg_name="msg", queue_name="dead-letter-queue", connection="AzureWebJobsStorage")
+def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
+    """
+    Processes messages from the dead letter queue. Triggered automatically when a message is added to the queue.
+    Write the message to log file.
+    """
+    try:
+         # Log the received message
+        logging.info(f"Processing dead letter message: {msg.get_body().decode('utf-8')}")
+
+        # Parse the message (assuming it's JSON)
+        message_body = json.loads(msg.get_body().decode('utf-8'))
+        logging.info(f"Error content: {message_body}")
+
+        # Store the message in blob storage
+        connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
+        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+        container_name = "dead-letter-messages"
+
+        blob_name = f"dead_letter_{datetime.datetime.now().isoformat()}.json"
+        blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+        blob_client.upload_blob(json.dumps(message_body))
+
+        logging.info(f"Stored dead letter message in blob: {blob_name}")
+
+    except Exception as e:
+        logging.error(f"Error processing dead letter message: {str(e)}. Make sure the message is in JSON format.")
+
+
+
+def send_to_dead_letter_queue(error_message, original_function_name, original_payload):
+    """ Helper function for for sending messages to dead letter queue.
+    Called by all exception from serverless functions
+    """
+    try:
+        connect_str = os.environ['AzureWebJobsStorage']
+        queue_name = "dead-letter-queue"
+        queue_client = QueueClient.from_connection_string(connect_str, queue_name)
+        
+        message_content = {
+            "error": str(error_message),
+            "function": original_function_name,
+            "payload": original_payload,
+            "timestamp": datetime.datetime.utcnow().isoformat()
+        }
+        
+        queue_client.send_message(json.dumps(message_content))
+        logging.info(f"Sent message to dead-letter-queue succesfully: {message_content}")
+    except Exception as e:
+        logging.error(f"Failed to send message to dead-letter-queue: {str(e)}")

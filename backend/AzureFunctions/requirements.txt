@@ -1,7 +1,18 @@
-# Versions need to be specified 
-azure-functions
-mysql-connector-python
-bcrypt
-python-dotenv
-azure-storage-blob
-azure-core
+azure-core==1.31.0
+azure-functions==1.21.3
+azure-storage-blob==12.23.1
+azure-storage-queue==12.12.0
+bcrypt==4.2.0
+certifi==2024.8.30
+cffi==1.17.1
+charset-normalizer==3.4.0
+cryptography==43.0.1
+idna==3.10
+isodate==0.7.2
+mysql-connector-python==9.1.0
+pycparser==2.22
+python-dotenv==1.0.1
+requests==2.32.3
+six==1.16.0
+typing_extensions==4.12.2
+urllib3==2.2.3
