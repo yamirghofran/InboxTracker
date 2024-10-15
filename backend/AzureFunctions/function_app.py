@@ -65,6 +65,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
                     content_settings=ContentSettings(content_type=content_type)
                 )
                 receipt_url = blob_client.url
+
             except ResourceExistsError:
                 return func.HttpResponse("A blob with this name already exists", status_code=400)
 
@@ -290,13 +291,25 @@ def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
         logging.info(f"Failed request details: {message_body}")
 
         # Store the message in blob storage
-        blob_service_client = BlobServiceClient.from_connection_string(os.environ['AzureWebJobsStorage'])
-        container_client = blob_service_client.get_container_client("dead-letter-messages")
+        connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
+        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
+        container_name = "dead-letter-messages"
+
+        # Create the container if it doesn't exist
+        container_client = blob_service_client.get_container_client(container_name)
+        if not container_client.exists():
+            container_client.create_container()
+            logging.info(f"Created container: {container_name}")
+
+
         blob_name = f"dead_letter_{datetime.datetime.now().isoformat()}.json"
-        blob_client = container_client.get_blob_client(blob_name)
+        blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
         blob_client.upload_blob(json.dumps(message_body))
 
         logging.info(f"Stored dead letter message in blob: {blob_name}")
 
     except Exception as e:
         logging.error(f"Error processing dead letter message: {str(e)}")
+
+
+
