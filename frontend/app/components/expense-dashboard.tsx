@@ -77,12 +77,23 @@ const ExpenseCard = ({ expense, onDelete, categories }: { expense: ExpenseWithCa
   // Use editedExpense for rendering
   const displayExpense = editedExpense;
 
+  // Helper function to format the amount
+  const formatAmount = (amount: any) => {
+    if (typeof amount === 'number') {
+      return amount.toFixed(2);
+    } else if (typeof amount === 'string') {
+      const parsedAmount = parseFloat(amount);
+      return isNaN(parsedAmount) ? 'N/A' : parsedAmount.toFixed(2);
+    }
+    return 'N/A';
+  };
+
   return (
     <Card className="w-full max-w-2xl mx-auto">
       <CardHeader className="relative pb-2">
         <div className="flex justify-between items-start">
           <h2 className="text-lg font-semibold">{displayExpense.description} - {displayExpense.companyName}</h2>
-          <span className="text-lg font-semibold">${displayExpense.amount?.toFixed(2) ?? 'N/A'}</span>
+          <span className="text-lg font-semibold">${formatAmount(displayExpense.amount)}</span>
         </div>
         <Badge variant="secondary" className="mt-2 max-w-fit">
           {displayExpense.categoryName ?? 'Uncategorized'}
@@ -234,7 +245,7 @@ export default function ExpenseDashboard({
               Upload a receipt, fill in the expense details, and select a category.
             </SheetDescription>
           </SheetHeader>
-          <ExpenseForm categories={categories} userId={userId} />
+        <ExpenseForm categories={categories} userId={userId} />
         </SheetContent>
       </Sheet>
 
