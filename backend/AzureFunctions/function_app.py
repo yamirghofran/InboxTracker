@@ -245,6 +245,8 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
         user_id = await validateCredentials(email, password)
 
         if user_id:
+            
+            
             return func.HttpResponse(json.dumps({"id": user_id, "email": email}), mimetype="application/json")
         else:
             raise Exception("Invalid email or password")
@@ -289,18 +291,12 @@ async def Signup(req: func.HttpRequest) -> func.HttpResponse:
             )
         else:
             logging.warning(f"Email already exists or user creation failed: {email}")
-            return func.HttpResponse(
-                json.dumps({"error": "Email already exists or user creation failed"}),
-                status_code=409,
-                mimetype="application/json"
-            )
+            raise Exception("Email already exists or user creation failed")
 
     except Exception as e:
         error_message = f"An error occurred in Signup: {str(e)}"
         logging.error(error_message)
         send_to_dead_letter_queue(error_message, "Signup", req.get_json())
-
-
 
         return func.HttpResponse(
             json.dumps({"error": f"An error occurred: {str(e)}"}),
@@ -308,54 +304,81 @@ async def Signup(req: func.HttpRequest) -> func.HttpResponse:
             mimetype="application/json"
         )
     
+
 @app.function_name(name="ProcessDeadLetterQueue")
 @app.queue_trigger(arg_name="msg", queue_name="dead-letter-queue", connection="AzureWebJobsStorage")
 def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
-    """
-    Processes messages from the dead letter queue. Triggered automatically when a message is added to the queue.
-    Write the message to log file.
-    """
     try:
-         # Log the received message
-        logging.info(f"Processing dead letter message: {msg.get_body().decode('utf-8')}")
+        # Log the received message
+        logging.info(f"Received message from dead-letter-queue: {msg.get_body().decode('utf-8')}")
 
         # Parse the message (assuming it's JSON)
         message_body = json.loads(msg.get_body().decode('utf-8'))
-        logging.info(f"Error content: {message_body}")
+        logging.info(f"Parsed message body: {message_body}")
 
         # Store the message in blob storage
         connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
         container_name = "dead-letter-messages"
 
+        # Use a unique name for the blob
         blob_name = f"dead_letter_{datetime.datetime.now().isoformat()}.json"
         blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
+        
+        # Upload the message content
         blob_client.upload_blob(json.dumps(message_body))
-
         logging.info(f"Stored dead letter message in blob: {blob_name}")
 
     except Exception as e:
-        logging.error(f"Error processing dead letter message: {str(e)}. Make sure the message is in JSON format.")
-
+        logging.error(f"Error processing dead letter message: {str(e)}. Please ensure the message is properly formatted and valid.")
+        # Don't re-raise the exception, as this would cause the message to be retried
 
 
 def send_to_dead_letter_queue(error_message, original_function_name, original_payload):
-    """ Helper function for for sending messages to dead letter queue.
-    Called by all exception from serverless functions
-    """
+        # Set your connection string and queue name
+        connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')  # Replace with your connection string if not using env var
+        queue_name = "dead-letter-queue"
+
+        # Create a QueueClient
+        queue_client = QueueClient.from_connection_string(connection_string, queue_name)
+
+        # Message to send (can be JSON or plain text)
+        message_content = {
+            "order_id": "12345",
+            "status": "failed",
+            "error": "Invalid payment details"
+        }
+
+        # Convert the message to JSON format and send it
+        message_json = json.dumps(message_content)
+        queue_client.send_message(message_json)
+
+        print(f"Message sent to queue {queue_name}: {message_json}")
+
+
+"""def send_to_dead_letter_queue(error_message, original_function_name, original_payload):
     try:
+        # Validate if the original_payload is JSON serializable
+        try:
+            json.dumps(original_payload)  # This will raise a TypeError if the payload is not serializable
+        except (TypeError, ValueError) as json_err:
+            logging.error(f"Invalid JSON payload: {str(json_err)}")
+            original_payload = {"error": "Invalid payload, unable to serialize."}
+        
         connect_str = os.environ['AzureWebJobsStorage']
         queue_name = "dead-letter-queue"
         queue_client = QueueClient.from_connection_string(connect_str, queue_name)
-        
+
+        # Construct the message content
         message_content = {
             "error": str(error_message),
             "function": original_function_name,
             "payload": original_payload,
-            "timestamp": datetime.datetime.utcnow().isoformat()
         }
-        
-        queue_client.send_message(json.dumps(message_content))
-        logging.info(f"Sent message to dead-letter-queue succesfully: {message_content}")
+
+        message_json = json.dumps(message_content)
+        logging.info(f"Sending message to dead-letter-queue: {message_json}")
+        queue_client.send_message(message_json)
+        logging.info("Message sent successfully")
     except Exception as e:
-        logging.error(f"Failed to send message to dead-letter-queue: {str(e)}")
+        logging.error(f"Failed to send message to dead-letter-queue: {str(e)}")"""
