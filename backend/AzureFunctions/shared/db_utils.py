@@ -61,8 +61,8 @@ async def validateCredentials(email, password):
     else:
         return None
 
-async def createUser(email, password):
-    if not email or not password:
+async def createUser(email, password, firstName, lastName):
+    if not email or not password or not firstName or not lastName:
         return None
 
     # Check if user already exists
@@ -75,7 +75,7 @@ async def createUser(email, password):
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
 
     # Insert new user
-    insert_query = "INSERT INTO Users (email, passwordHash) VALUES (%s, %s)"
-    result = execute_query(insert_query, (email, hashed_password.decode('utf-8')))
+    insert_query = "INSERT INTO Users (email, passwordHash, firstName, lastName) VALUES (%s, %s, %s, %s)"
+    result = execute_query(insert_query, (email, hashed_password.decode('utf-8'), firstName, lastName))
 
     return result['lastrowid']  # Return the new user's ID

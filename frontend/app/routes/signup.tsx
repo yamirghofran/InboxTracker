@@ -24,6 +24,8 @@ export const description =
 export default function SignupForm() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [firstName, setFirstName] = useState("")
+  const [lastName, setLastName] = useState("")
   const [error, setError] = useState("")
   const navigate = useNavigate()
 
@@ -37,17 +39,16 @@ export default function SignupForm() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ firstName, lastName, email, password }),
       })
 
+      const data = await response.json()
+
       if (response.ok) {
-        const data = await response.json()
-        // Handle successful signup (e.g., store user data in session, redirect)
         console.log("Signup successful", data)
-        navigate("/login") // Redirect to dashboard or home page
+        navigate("/login")
       } else {
-        const errorData = await response.json()
-        setError(errorData.message || "Signup failed. Please try again.")
+        setError(data.error || "Signup failed. Please try again.")
       }
     } catch (err) {
       setError("An error occurred. Please try again.")
@@ -66,7 +67,16 @@ export default function SignupForm() {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="grid gap-4">
-            {error && <div className="text-red-500 text-sm">{error}</div>}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="first-name">First name</Label>
+                <Input id="first-name" placeholder="Max" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="last-name">Last name</Label>
+                <Input id="last-name" placeholder="Robinson" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
+              </div>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -80,17 +90,12 @@ export default function SignupForm() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
+              <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
             </div>
             <Button type="submit" className="w-full">
               Create an account
             </Button>
+            {error && <p className="text-red-500 text-sm">{error}</p>}
           </form>
           <div className="mt-4 text-center text-sm">
             Already have an account?{" "}

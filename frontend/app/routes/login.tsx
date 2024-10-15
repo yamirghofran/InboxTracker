@@ -1,4 +1,4 @@
-import { Link, redirect, json, useActionData, Form } from "@remix-run/react"
+import { Link, redirect, json, useActionData, Form, useNavigate } from "@remix-run/react"
 import { LoaderFunctionArgs, ActionFunctionArgs } from "@remix-run/node"
 import { Button } from "~/components/ui/button"
 import {
@@ -63,34 +63,30 @@ export async function loader({
   export async function action({
     request,
   }: ActionFunctionArgs): Promise<Response | ActionData> {
-    const session = await getSession(
-      request.headers.get("Cookie")
-    );
-    const form = await request.formData();
-    const email = form.get("email") as string;
-    const password = form.get("password") as string;
-  
-    const userId = await validateCredentials(email, password);
-  
-    if (userId == null) {
-      session.flash("error", "Invalid username/password");
-  
-      // Redirect back to the login page with errors.
-      return redirect("/login", {
+    const formData = await request.formData();
+    const email = formData.get("email");
+    const password = formData.get("password");
+
+    // Perform login logic here (e.g., call your Azure Function)
+    const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/Login?${AZURE_FUNCTION_KEY_CODE}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+
+    if (response.ok) {
+      const { id: userId } = await response.json();
+      const session = await getSession(request.headers.get("Cookie"));
+      session.set("userId", userId);
+
+      return redirect("/", {
         headers: {
           "Set-Cookie": await commitSession(session),
         },
       });
+    } else {
+      return json({ error: "Invalid credentials" }, { status: 400 });
     }
-  
-    session.set("userId", userId);
-  
-    // Login succeeded, send them to the home page.
-    return redirect("/", {
-      headers: {
-        "Set-Cookie": await commitSession(session),
-      },
-    });
   }
   
 

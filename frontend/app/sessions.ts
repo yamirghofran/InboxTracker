@@ -23,7 +23,7 @@ const { getSession, commitSession, destroySession } =
         //
         // expires: new Date(Date.now() + 60_000),
         httpOnly: true,
-        maxAge: 60,
+        maxAge: 60 * 60 * 24 * 30, // 30 days
         //path: "/",
         //sameSite: "lax",
         secrets: ["s3cret1"],
@@ -33,3 +33,8 @@ const { getSession, commitSession, destroySession } =
   );
 
 export { getSession, commitSession, destroySession };
+
+export async function getUserId(request: Request): Promise<string | null> {
+  const session = await getSession(request.headers.get("Cookie"));
+  return session.get("userId") || null;
+}

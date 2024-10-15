@@ -13,6 +13,7 @@ import ExpenseDashboard from "~/components/expense-dashboard";
 import { Button } from "~/components/ui/button";
 import { Expense, Category } from '~/types'
 import { getSession, destroySession } from "~/sessions";
+import { requireUserId } from "~/auth.server";
 
 // Azure Function base URL
 const AZURE_FUNCTION_BASE_URL = 'https://inboxtracker.azurewebsites.net/api';
@@ -86,35 +87,32 @@ type ExpenseWithCategoryName = Expense & { categoryName: string };
 type LoaderData = {
   expenses: ExpenseWithCategoryName[];
   categories: Category[];
+  userId: string;
   error?: string;
 };
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  try {
-    const [expenses, categories] = await Promise.all([getExpenses(), getCategories()]);
-    
-    // Join expenses with categories to include category names
-    const expensesWithCategoryNames: ExpenseWithCategoryName[] = expenses.map(expense => {
-      const category = categories.find(cat => cat.id === expense.categoryId);
-      return {
-        ...expense,
-        categoryName: category ? category.name : 'Unknown Category'
-      };
-    });
+  const userId = await requireUserId(request);
+  
+  // Fetch expenses and categories using the userId
+  const expensesResponse = await fetch(`${AZURE_FUNCTION_BASE_URL}/GetExpenses?${AZURE_FUNCTION_KEY_CODE}&userId=${userId}`);
+  const categoriesResponse = await fetch(`${AZURE_FUNCTION_BASE_URL}/GetCategories?${AZURE_FUNCTION_KEY_CODE}`);
 
-    return json<LoaderData>({ expenses: expensesWithCategoryNames, categories });
-  } catch (error) {
-    console.error('Loader error:', error);
-    return json<LoaderData>({ expenses: [], categories: [], error: 'Failed to load data' }, { status: 500 });
-  }
+  const [expenses, categories] = await Promise.all([
+    expensesResponse.json(),
+    categoriesResponse.json(),
+  ]);
+
+  return json<LoaderData>({ expenses, categories, userId, error: undefined });
 };
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = formData.get("intent");
-
+  const session = await getSession(request.headers.get("Cookie"));
+  const userId = session.get("userId");
   if (intent === "logout") {
-    const session = await getSession(request.headers.get("Cookie"));
+    
     return redirect("/login", {
       headers: {
         "Set-Cookie": await destroySession(session),
@@ -125,7 +123,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   try {
     if (intent === "addExpense") {
       const expense = {
-        userId: HARDCODED_USER_ID,
+        userId: Number(userId), // Convert to number, will be 0 if undefined
         companyName: formData.get("companyName") as string,
         amount: parseFloat(formData.get("amount") as string),
         description: formData.get("description") as string,
@@ -167,7 +165,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 
 export default function ExpensesRoute() {
-  const { expenses, categories, error } = useLoaderData<typeof loader>();
+  const { expenses, categories, error, userId } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
 
   if (error) {
