@@ -12,6 +12,13 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { getSession, commitSession } from "~/sessions"
 
+// Azure Function base URL
+const AZURE_FUNCTION_BASE_URL = 'https://inboxtracker.azurewebsites.net/api';
+const AZURE_FUNCTION_KEY_CODE = 'code=DDcpu5KsbITe9zqwhb5SNVRg7KrcscLFlDee4VzPDy6vAzFuCh_l6w%3D%3D'
+
+// Hardcoded UserID
+const HARDCODED_USER_ID = 1;
+
 type ActionData = {
     error?: string;
   };
@@ -38,7 +45,7 @@ export async function loader({
   }
 
   async function validateCredentials(email: string, password: string) {
-    const response = await fetch(`${process.env.API_URL}/Login`, {
+    const response = await fetch(`/api/Login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

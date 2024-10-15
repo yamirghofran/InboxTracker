@@ -11,6 +11,13 @@ import {
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 
+// Azure Function base URL
+const AZURE_FUNCTION_BASE_URL = 'https://inboxtracker.azurewebsites.net/api';
+const AZURE_FUNCTION_KEY_CODE = 'code=DDcpu5KsbITe9zqwhb5SNVRg7KrcscLFlDee4VzPDy6vAzFuCh_l6w%3D%3D'
+
+// Hardcoded UserID
+const HARDCODED_USER_ID = 1;
+
 export const description =
   "A sign up form with first name, last name, email and password inside a card. There's an option to sign up with GitHub and a link to login if you already have an account"
 
@@ -25,7 +32,7 @@ export default function SignupForm() {
     setError("")
 
     try {
-      const response = await fetch("/Signup", {
+      const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/CreateExpense?${AZURE_FUNCTION_KEY_CODE}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
