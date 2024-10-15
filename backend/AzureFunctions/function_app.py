@@ -231,34 +231,43 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
 async def Signup(req: func.HttpRequest) -> func.HttpResponse:
     try:
         req_body = req.get_json()
+        logging.info(f"Received signup request: {req_body}")
+        
         email = req_body.get('email')
         password = req_body.get('password')
         firstName = req_body.get('firstName')
         lastName = req_body.get('lastName')
 
         if not all([email, password, firstName, lastName]):
+            missing_fields = [field for field in ['email', 'password', 'firstName', 'lastName'] if not req_body.get(field)]
+            error_message = f"Missing required fields: {', '.join(missing_fields)}"
+            logging.warning(error_message)
             return func.HttpResponse(
-                json.dumps({"error": "Email, password, firstName, and lastName are required"}),
+                json.dumps({"error": error_message}),
                 status_code=400,
                 mimetype="application/json"
             )
 
+        logging.info(f"Creating user with email: {email}")
         new_user_id = await createUser(email, password, firstName, lastName)
 
         if new_user_id:
+            logging.info(f"User created successfully with ID: {new_user_id}")
             return func.HttpResponse(
                 json.dumps({"id": new_user_id, "email": email, "firstName": firstName, "lastName": lastName}),
                 status_code=201,
                 mimetype="application/json"
             )
         else:
+            logging.warning(f"Email already exists or user creation failed: {email}")
             return func.HttpResponse(
-                json.dumps({"error": "Email already exists"}),
+                json.dumps({"error": "Email already exists or user creation failed"}),
                 status_code=409,
                 mimetype="application/json"
             )
 
     except Exception as e:
+        logging.error(f"Error in Signup function: {str(e)}", exc_info=True)
         return func.HttpResponse(
             json.dumps({"error": f"An error occurred: {str(e)}"}),
             status_code=500,
