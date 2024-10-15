@@ -250,3 +250,21 @@ async def Signup(req: func.HttpRequest) -> func.HttpResponse:
 
     except Exception as e:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
+    
+@app.function_name(name="ProcessDeadLetterQueue")
+@app.queue_trigger(arg_name="msg", queue_name="dead-letter-queue", connection="AzureWebJobsStorage")
+def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
+    """
+    Processes messages from the dead letter queue. Triggered automatically when a message is added to the queue.
+    Write the message to log file.
+    """
+    try:
+        # Log the received message
+        logging.info(f"Processing dead letter message: {msg.get_body().decode('utf-8')}")
+
+        # Example: Parsing the message (assuming it's JSON)
+        message_body = json.loads(msg.get_body().decode('utf-8'))
+        logging.info(f"Failed request details: {message_body}")
+
+    except Exception as e:
+        logging.error(f"Error processing dead letter message: {str(e)}")
