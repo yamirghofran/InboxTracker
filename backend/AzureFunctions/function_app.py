@@ -259,12 +259,21 @@ def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
     Write the message to log file.
     """
     try:
-        # Log the received message
+         # Log the received message
         logging.info(f"Processing dead letter message: {msg.get_body().decode('utf-8')}")
 
-        # Example: Parsing the message (assuming it's JSON)
+        # Parse the message (assuming it's JSON)
         message_body = json.loads(msg.get_body().decode('utf-8'))
         logging.info(f"Failed request details: {message_body}")
+
+        # Store the message in blob storage
+        blob_service_client = BlobServiceClient.from_connection_string(os.environ['AzureWebJobsStorage'])
+        container_client = blob_service_client.get_container_client("dead-letter-messages")
+        blob_name = f"dead_letter_{datetime.datetime.now().isoformat()}.json"
+        blob_client = container_client.get_blob_client(blob_name)
+        blob_client.upload_blob(json.dumps(message_body))
+
+        logging.info(f"Stored dead letter message in blob: {blob_name}")
 
     except Exception as e:
         logging.error(f"Error processing dead letter message: {str(e)}")
