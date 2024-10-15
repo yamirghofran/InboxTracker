@@ -6,4 +6,3 @@ python-dotenv
 azure-storage-blob
 azure-core
 
-a
