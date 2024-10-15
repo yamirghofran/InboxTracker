@@ -87,10 +87,11 @@ export async function loader({
   }
   
 
-export function LoginForm() {
+export default function LoginForm() {
   const actionData = useActionData<typeof action>();
 
   return (
+    <div className="h-screen flex items-center justify-center">
     <Form method="post">
       <Card className="mx-auto max-w-sm">
         <CardHeader>
@@ -120,9 +121,6 @@ export function LoginForm() {
             <Button type="submit" className="w-full">
               Login
             </Button>
-            <Button variant="outline" className="w-full">
-              Login with Google
-            </Button>
           </div>
           {actionData?.error && (
             <p className="mt-4 text-red-600">{actionData.error}</p>
@@ -136,5 +134,6 @@ export function LoginForm() {
         </CardContent>
       </Card>
     </Form>
+    </div>
   )
 }

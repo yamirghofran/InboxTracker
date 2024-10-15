@@ -7,10 +7,12 @@ export const meta: MetaFunction = () => {
 };
 
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
 import { useLoaderData, useActionData } from "@remix-run/react";
 import ExpenseDashboard from "~/components/expense-dashboard";
+import { Button } from "~/components/ui/button";
 import { Expense, Category } from '~/types'
+import { getSession, destroySession } from "~/sessions";
 
 // Azure Function base URL
 const AZURE_FUNCTION_BASE_URL = 'https://inboxtracker.azurewebsites.net/api';
@@ -111,6 +113,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
   const intent = formData.get("intent");
 
+  if (intent === "logout") {
+    const session = await getSession(request.headers.get("Cookie"));
+    return redirect("/login", {
+      headers: {
+        "Set-Cookie": await destroySession(session),
+      },
+    });
+  }
+
   try {
     if (intent === "addExpense") {
       const expense = {
@@ -164,12 +175,14 @@ export default function ExpensesRoute() {
   }
 
   return (
-    <ExpenseDashboard
-      initialExpenses={expenses}
+    <div>
+      <ExpenseDashboard
+        initialExpenses={expenses}
       initialCategories={categories}
       actionData={actionData}
       userId={HARDCODED_USER_ID}
     />
+    </div>
   );
 }
 

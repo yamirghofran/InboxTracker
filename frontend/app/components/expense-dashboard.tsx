@@ -217,7 +217,10 @@ export default function ExpenseDashboard({
   return (
     <div className="min-h-screen bg-background p-8">
       <h1 className="text-3xl font-bold mb-6">Expense Management Dashboard</h1>
-      
+      <Form method="post">
+        <input type="hidden" name="intent" value="logout" />
+        <Button variant="outline" type="submit">Log out</Button>
+      </Form>
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
           <Button className="mb-4">
