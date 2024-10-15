@@ -23,8 +23,8 @@ const AZURE_FUNCTION_KEY_CODE = 'code=DDcpu5KsbITe9zqwhb5SNVRg7KrcscLFlDee4VzPDy
 const HARDCODED_USER_ID = 1;
 
 // Updated functions to include UserID
-async function getExpenses(): Promise<Expense[]> {
-  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/GetExpenses?${AZURE_FUNCTION_KEY_CODE}&userId=${HARDCODED_USER_ID}`);
+async function getExpenses(userId: number): Promise<Expense[]> {
+  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/GetExpenses?${AZURE_FUNCTION_KEY_CODE}&userId=${userId}`);
   if (!response.ok) throw new Error('Failed to fetch expenses');
   const expenses = await response.json();
   return expenses.map((expense: Expense) => ({
@@ -33,8 +33,8 @@ async function getExpenses(): Promise<Expense[]> {
   }));
 }
 
-async function getCategories(): Promise<Category[]> {
-  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/GetCategories?${AZURE_FUNCTION_KEY_CODE}&userId=${HARDCODED_USER_ID}`);
+async function getCategories(userId: number): Promise<Category[]> {
+  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/GetCategories?${AZURE_FUNCTION_KEY_CODE}&userId=${userId}`);
   if (!response.ok) throw new Error('Failed to fetch categories');
   return response.json();
 }
@@ -46,7 +46,7 @@ async function createExpense(expense: Omit<Expense, 'id' | 'createdAt' | 'update
     formData.append('receipt', receiptFile);
   }
 
-  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/CreateExpense?${AZURE_FUNCTION_KEY_CODE}`, {
+  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/CreateExpense?${AZURE_FUNCTION_KEY_CODE}&userId=${expense.userId}`, {
     method: 'POST',
     body: formData,
   });
@@ -58,9 +58,9 @@ async function createExpense(expense: Omit<Expense, 'id' | 'createdAt' | 'update
 }
 
 async function updateExpense(expense: Omit<Expense, 'createdAt' | 'updatedAt'>): Promise<void> {
-  console.log(`Updating expense with ID: ${expense.id}, userId: ${HARDCODED_USER_ID}`);
+  console.log(`Updating expense with ID: ${expense.id}, userId: ${expense.userId}`);
   console.log(`Expense data: ${JSON.stringify(expense)}`);
-  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/UpdateExpense?${AZURE_FUNCTION_KEY_CODE}`, {
+  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/UpdateExpense?${AZURE_FUNCTION_KEY_CODE}&userId=${expense.userId}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(expense),
@@ -72,9 +72,9 @@ async function updateExpense(expense: Omit<Expense, 'createdAt' | 'updatedAt'>):
 }
 
 // Add this new function near the top of the file with the other API functions
-async function deleteExpense(expenseId: number): Promise<void> {
-  console.log(`Deleting expense with ID: ${expenseId}, userId: ${HARDCODED_USER_ID}`);
-  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/DeleteExpense?${AZURE_FUNCTION_KEY_CODE}&expenseId=${expenseId}&userId=${HARDCODED_USER_ID}`, {
+async function deleteExpense(expenseId: number, userId: number): Promise<void> {
+  console.log(`Deleting expense with ID: ${expenseId}, userId: ${userId}`);
+  const response = await fetch(`${AZURE_FUNCTION_BASE_URL}/DeleteExpense?${AZURE_FUNCTION_KEY_CODE}&expenseId=${expenseId}&userId=${userId}`, {
     method: 'DELETE',
   });
   if (!response.ok) throw new Error('Failed to delete expense');
@@ -138,14 +138,18 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     if (intent === "deleteExpense") {
       const expenseId = parseInt(formData.get("expenseId") as string);
-      await deleteExpense(expenseId);
+      const userIdNumber = Number(userId);
+      if (isNaN(userIdNumber)) {
+        throw new Error("Invalid user ID");
+      }
+      await deleteExpense(expenseId, userIdNumber);
       return json({ deletedExpenseId: expenseId });
     }
 
     if (intent === "updateExpense") {
       const updatedExpense = {
         id: parseInt(formData.get("expenseId") as string),
-        userId: HARDCODED_USER_ID,
+        userId: Number(userId),
         companyName: formData.get("companyName") as string,
         amount: parseFloat(formData.get("amount") as string),
         description: formData.get("description") as string,
@@ -178,7 +182,7 @@ export default function ExpensesRoute() {
         initialExpenses={expenses}
       initialCategories={categories}
       actionData={actionData}
-      userId={HARDCODED_USER_ID}
+      userId={Number(userId)}
     />
     </div>
   );

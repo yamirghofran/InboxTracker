@@ -179,7 +179,7 @@ def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
     Get all the the categories in the database
     """
     try:
-        query = "SELECT * FROM Categories"
+        query = "SELECT id, name FROM Categories"
         result = execute_query(query)
 
         # Custom serialization function for datetime objects
@@ -210,13 +210,17 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
             return func.HttpResponse("UserID is required", status_code=400)
 
         query = """
-        SELECT e.*, c.name
+        SELECT e.*, c.name as categoryName
         FROM Expenses e
         LEFT JOIN Categories c ON e.categoryId = c.id
         WHERE e.userId = %s
         ORDER BY e.expenseDate DESC
         """
         result = execute_query(query, (userId,))
+
+        # Ensure categoryName is never null
+        for expense in result:
+            expense['categoryName'] = expense['categoryName'] or 'Uncategorized'
 
         return func.HttpResponse(json.dumps(result, default=str), mimetype="application/json")
 

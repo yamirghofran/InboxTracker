@@ -36,7 +36,7 @@ const HARDCODED_USER_ID = 1
 const sas_token = 'sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2025-10-11T17:59:41Z&st=2024-10-11T09:59:41Z&spr=https,http&sig=6y0SwjdB2sDHQWUNVzfrs3WsTQ2lLJ5crw9iITrefEc%3D'
 
 
-const ExpenseCard = ({ expense, onDelete, categories }: { expense: ExpenseWithCategoryName; onDelete: (id: number) => void; categories: Category[] }) => {
+const ExpenseCard = ({ expense, onDelete, categories, userId }: { expense: ExpenseWithCategoryName; onDelete: (id: number) => void; categories: Category[]; userId: number }) => {
   const submit = useSubmit();
   const navigation = useNavigation();
   const isDeleting = navigation.formData?.get("intent") === "deleteExpense" && 
@@ -141,7 +141,7 @@ const ExpenseCard = ({ expense, onDelete, categories }: { expense: ExpenseWithCa
                 categories={categories} 
                 onSubmit={handleEditSubmit} 
                 isEditing={true}
-                userId={HARDCODED_USER_ID}
+                userId={userId}
               />
             </SheetContent>
           </Sheet>
@@ -257,6 +257,7 @@ export default function ExpenseDashboard({
               expense={expense} 
               onDelete={deleteExpense} 
               categories={categories}
+              userId={userId}
             />
           ))
         ) : (
