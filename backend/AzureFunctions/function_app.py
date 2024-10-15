@@ -7,7 +7,7 @@ import uuid
 import azure.functions as func
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
-from shared.db_utils import execute_query
+from shared.db_utils import execute_query, validateCredentials, createUser
 
 
 app = func.FunctionApp()
@@ -205,29 +205,44 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 
-@app.function_name(name="AuthenticateUser")
-@app.route(route="AuthenticateUser", methods=["POST"])
-def AuthenticateUser(req: func.HttpRequest) -> func.HttpResponse:
+@app.function_name(name="Login")
+@app.route(route="Login", methods=["POST"])
+async def Login(req: func.HttpRequest) -> func.HttpResponse:
     try:
-        req_body = req.get_json() # Transforms the JSON from the HTTPS request into a dictionary
-        username = req_body.get('username')
+        req_body = req.get_json()
+        email = req_body.get('email')
         password = req_body.get('password')
 
-        if not username or not password:
-            return func.HttpResponse("Username and password are required", status_code=400)
+        if not email or not password:
+            return func.HttpResponse("Email and password are required", status_code=400)
 
-        query = "SELECT id, username, passwordHash FROM Users WHERE username = %s"
-        result = execute_query(query, (username,))
+        user_id = await validateCredentials(email, password)
 
-        if not result:
-            return func.HttpResponse("Invalid username or password", status_code=401)
-
-        # Reversing hash to check if password is correct
-        user = result[0] # Why is this a list? Several possible users with the same username?
-        if bcrypt.checkpw(password.encode('utf-8'), user['passwordHash'].encode('utf-8')):
-            return func.HttpResponse(json.dumps({"id": user['id'], "username": user['username']}), mimetype="application/json") # Why do you return this?
+        if user_id:
+            return func.HttpResponse(json.dumps({"id": user_id, "email": email}), mimetype="application/json")
         else:
-            return func.HttpResponse("Invalid username or password", status_code=401)
+            return func.HttpResponse("Invalid email or password", status_code=401)
+
+    except Exception as e:
+        return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
+
+@app.function_name(name="Signup")
+@app.route(route="Signup", methods=["POST"])
+async def Signup(req: func.HttpRequest) -> func.HttpResponse:
+    try:
+        req_body = req.get_json()
+        email = req_body.get('email')
+        password = req_body.get('password')
+
+        if not email or not password:
+            return func.HttpResponse("Email and password are required", status_code=400)
+
+        new_user_id = await createUser(email, password)
+
+        if new_user_id:
+            return func.HttpResponse(json.dumps({"id": new_user_id, "email": email}), status_code=201, mimetype="application/json")
+        else:
+            return func.HttpResponse("Email already exists", status_code=409)
 
     except Exception as e:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
