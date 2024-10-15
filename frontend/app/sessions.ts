@@ -33,3 +33,8 @@ const { getSession, commitSession, destroySession } =
   );
 
 export { getSession, commitSession, destroySession };
+
+export async function getUserId(request: Request): Promise<string | null> {
+  const session = await getSession(request.headers.get("Cookie"));
+  return session.get("userId") || null;
+}
