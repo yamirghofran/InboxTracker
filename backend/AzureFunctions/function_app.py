@@ -243,7 +243,7 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
         if user_id:
             return func.HttpResponse(json.dumps({"id": user_id, "email": email}), mimetype="application/json")
         else:
-            return func.HttpResponse("Invalid email or password", status_code=401)
+            raise Exception("Invalid email or password")
 
     except Exception as e:
         error_message = f"An error occurred in Login: {str(e)}"
