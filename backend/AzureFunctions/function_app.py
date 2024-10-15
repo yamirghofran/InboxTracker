@@ -8,6 +8,9 @@ import azure.functions as func
 from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
 from shared.db_utils import execute_query, validateCredentials, createUser
+from azure.storage.queue import QueueClient
+from dql import send_to_dead_letter_queue
+
 
 
 app = func.FunctionApp()
@@ -96,6 +99,13 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(json.dumps(new_expense), status_code=201, mimetype="application/json")
 
     except Exception as e:
+
+        error_message = f"An error occurred in CreateExpense: {str(e)}"
+        logging.error(error_message)
+        
+        # Send to dead-letter-queue
+        send_to_dead_letter_queue(error_message, "CreateExpense", req.get_json())
+
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="DeleteExpense") # Defines name of the function within the function app
@@ -121,6 +131,9 @@ def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Expense deleted successfully")
 
     except Exception as e:
+        error_message = f"An error occurred in DeleteExpense: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "DeleteExpense", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 @app.function_name(name="UpdateExpense")
@@ -155,6 +168,9 @@ def UpdateExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse("Expense updated successfully")
 
     except Exception as e:
+        error_message = f"An error occurred in UpdateExpense: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "UpdateExpense", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 @app.function_name(name="GetCategories")
@@ -180,6 +196,9 @@ def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
         )
 
     except Exception as e:
+        error_message = f"An error occurred in GetCategories: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "GetCategories", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 
@@ -203,6 +222,9 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(json.dumps(result, default=str), mimetype="application/json")
 
     except Exception as e:
+        error_message = f"An error occurred in GetExpenses: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "GetExpenses", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 
@@ -225,6 +247,9 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
             return func.HttpResponse("Invalid email or password", status_code=401)
 
     except Exception as e:
+        error_message = f"An error occurred in Login: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "Login", req.get_json())
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="Signup")
@@ -268,7 +293,12 @@ async def Signup(req: func.HttpRequest) -> func.HttpResponse:
             )
 
     except Exception as e:
-        logging.error(f"Error in Signup function: {str(e)}", exc_info=True)
+        error_message = f"An error occurred in Signup: {str(e)}"
+        logging.error(error_message)
+        send_to_dead_letter_queue(error_message, "Signup", req.get_json())
+
+
+
         return func.HttpResponse(
             json.dumps({"error": f"An error occurred: {str(e)}"}),
             status_code=500,
@@ -288,19 +318,12 @@ def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
 
         # Parse the message (assuming it's JSON)
         message_body = json.loads(msg.get_body().decode('utf-8'))
-        logging.info(f"Failed request details: {message_body}")
+        logging.info(f"Error content: {message_body}")
 
         # Store the message in blob storage
         connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
         blob_service_client = BlobServiceClient.from_connection_string(connect_str)
         container_name = "dead-letter-messages"
-
-        # Create the container if it doesn't exist
-        container_client = blob_service_client.get_container_client(container_name)
-        if not container_client.exists():
-            container_client.create_container()
-            logging.info(f"Created container: {container_name}")
-
 
         blob_name = f"dead_letter_{datetime.datetime.now().isoformat()}.json"
         blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
@@ -309,7 +332,7 @@ def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
         logging.info(f"Stored dead letter message in blob: {blob_name}")
 
     except Exception as e:
-        logging.error(f"Error processing dead letter message: {str(e)}")
+        logging.error(f"Error processing dead letter message: {str(e)}. Make sure the message is in JSON format.")
 
 
 
