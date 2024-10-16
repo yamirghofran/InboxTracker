@@ -1,0 +1,3 @@
+1. Add all serverless functions outside that centered module 
+2. A new queue is being creater named poison -------
+3. Update expense should not be a "+" icon
