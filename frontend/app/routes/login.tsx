@@ -94,16 +94,18 @@ export default function LoginForm() {
   const actionData = useActionData<typeof action>();
 
   return (
-    <div className="h-screen flex items-center justify-center">
-    <Form method="post">
-      <Card className="mx-auto max-w-sm">
+    <div className="h-screen flex">
+  {/* Left side: Form (25% width) */}
+  <div className="w-1/4 flex flex-col">
+    <Form method="post" className="w-full h-full flex items-center justify-center">
+      <Card className="mx-auto w-11/12 max-w-md h-2/5 flex flex-col justify-between">
         <CardHeader>
           <CardTitle className="text-2xl">Login</CardTitle>
           <CardDescription>
             Enter your email below to login to your account
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="flex-grow flex flex-col justify-center">
           <div className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
@@ -111,7 +113,7 @@ export default function LoginForm() {
                 id="email"
                 name="email"
                 type="email"
-                placeholder="m@example.com"
+                placeholder="email@example.com"
                 required
               />
             </div>
@@ -119,7 +121,7 @@ export default function LoginForm() {
               <div className="flex items-center">
                 <Label htmlFor="password">Password</Label>
               </div>
-              <Input id="password" name="password" type="password" required />
+              <Input id="password" name="password" placeholder="1234" type="password" required />
             </div>
             <Button type="submit" className="w-full">
               Login
@@ -137,6 +139,22 @@ export default function LoginForm() {
         </CardContent>
       </Card>
     </Form>
-    </div>
+    
+  {/* Footer */}
+  <footer className="py-4 text-center text-sm text-gray-500">
+          © 2024 InboxTracker. All rights reserved.
+        </footer>
+      </div>
+
+  {/* Right side: Image (75% width) */}
+  <div className="w-3/4">
+    <img
+      src="imgs/office.jpg"
+      alt="Corporate Illustration"
+      className="h-full w-full object-cover"
+    />
+  </div>
+</div>
+
   )
 }

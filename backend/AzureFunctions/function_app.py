@@ -245,6 +245,8 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
         user_id = await validateCredentials(email, password)
 
         if user_id:
+            
+            
             return func.HttpResponse(json.dumps({"id": user_id, "email": email}), mimetype="application/json")
         else:
             raise Exception("Invalid email or password")
@@ -330,7 +332,6 @@ def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
     except Exception as e:
         logging.error(f"Error processing dead letter message: {str(e)}. Please ensure the message is properly formatted and valid.")
         # Don't re-raise the exception, as this would cause the message to be retried
-
 
 def send_to_dead_letter_queue():
         # Set your connection string and queue name

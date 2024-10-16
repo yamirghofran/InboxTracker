@@ -32,6 +32,16 @@ import { Form, useSubmit, useNavigation } from "@remix-run/react"
 import { format } from 'date-fns'
 import { ExpenseWithCategoryName, Category, Expense } from '~/types'
 import { extractExpense } from '~/util';
+
+function Footer() {
+  return (
+    <footer className="mt-8 py-4 text-center text-sm text-gray-500 border-t">
+      © {new Date().getFullYear()} InboxTracker. All rights reserved.
+    </footer>
+  );
+}
+
+
 const HARDCODED_USER_ID = 1
 const sas_token = 'sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2025-10-11T17:59:41Z&st=2024-10-11T09:59:41Z&spr=https,http&sig=6y0SwjdB2sDHQWUNVzfrs3WsTQ2lLJ5crw9iITrefEc%3D'
 
@@ -227,11 +237,29 @@ export default function ExpenseDashboard({
 
   return (
     <div className="min-h-screen bg-background p-8">
-      <h1 className="text-3xl font-bold mb-6">Expense Management Dashboard</h1>
-      <Form method="post">
-        <input type="hidden" name="intent" value="logout" />
-        <Button variant="outline" type="submit">Log out</Button>
-      </Form>
+      <div className="flex-grow relative"> 
+        <div className="flex justify-between items-start mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-black to-gray-600 drop-shadow-lg mb-4">
+              Expense Management Dashboard
+            </h1>
+            <p className="text-gray-500 text-sm">
+              Monitor, track, and optimize your company's expenses effortlessly with our streamlined dashboard.
+            </p>
+          </div>
+          <div className="flex items-center space-x-4"> 
+          <Form method="post">
+          <input type="hidden" name="intent" value="logout" />
+          <Button variant="outline" type="submit">Log out</Button>
+        </Form>
+          <img 
+            src="imgs/profile-user.png" 
+            alt="Dashboard Logo" 
+            className="w-8 h-10 object-contain"
+          />
+        </div>
+        </div>
+
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetTrigger asChild>
           <Button className="mb-4">
@@ -264,6 +292,9 @@ export default function ExpenseDashboard({
           <p>No expenses to display.</p>
         )}
       </div>
+      
+    </div>
+    <Footer />
     </div>
   )
 }
@@ -289,6 +320,8 @@ function ExpenseForm({
   const [notes, setNotes] = useState(expense?.notes ?? '')
   const [receiptURL, setReceiptURL] = useState<string | null>(expense?.receiptURL ?? null)
   const [isLoadingExpense, setIsLoadingExpense] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+
 
   useEffect(() => {
     if (!isEditing) {
@@ -327,6 +360,7 @@ function ExpenseForm({
       reader.onloadend = () => {
         const fileContent = reader.result as string;
         setReceiptURL(fileContent);
+        setPreviewUrl(fileContent);
 
         // Only process if fields are empty
         if (!amount && !description && !companyName && !expenseDate && !notes && !categoryId) {
@@ -368,7 +402,7 @@ function ExpenseForm({
           value={amount}
           disabled={isLoadingExpense}
           onChange={(e) => setAmount(e.target.value)}
-          placeholder="Enter amount"
+          placeholder="Enter amount ($)"
           required
         />
       </div>
@@ -446,11 +480,11 @@ function ExpenseForm({
           accept="image/*"
         />
       </div>
-      {isEditing && receiptURL && (
+      {(isEditing ? receiptURL : previewUrl) && (
         <div className="mt-4">
           <Label>Receipt Preview</Label>
           <img
-            src={`${receiptURL}?${sas_token}`}
+            src={isEditing ? `${receiptURL}?${sas_token}` : previewUrl!}
             alt="Receipt"
             className="mt-2 max-w-full h-auto rounded-md shadow-sm"
           />
