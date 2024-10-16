@@ -1,0 +1,10 @@
+
+
+0. Add all functions outside that centered module 
+1. Data analysis panel
+2. A new queue is being creater named poison
+3. Update expense should not be a "+" icon
+
+
+## PHASE 3 (likely not included):
+- Manager role that can accept and decline expenses

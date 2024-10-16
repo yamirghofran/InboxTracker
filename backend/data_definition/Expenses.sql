@@ -1,0 +1,21 @@
+CREATE TABLE `Expenses` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `userId` int NOT NULL,
+  `categoryId` int DEFAULT NULL,
+  `amount` decimal(10,2) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  `notes` text,
+  `receiptURL` varchar(255) DEFAULT NULL,
+  `expenseDate` date NOT NULL,
+  `createdAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `companyName` varchar(255) NOT NULL,
+  `updatedAt` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `reimbursedAt` timestamp NULL DEFAULT NULL,
+  `reimbursedStatus` enum('pending','approved','rejected') DEFAULT 'pending',
+  `reimbursedBy` int DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `userId` (`userId`),
+  KEY `categoryId` (`categoryId`),
+  CONSTRAINT `Expenses_ibfk_1` FOREIGN KEY (`userId`) REFERENCES `Users` (`id`),
+  CONSTRAINT `Expenses_ibfk_2` FOREIGN KEY (`categoryId`) REFERENCES `Categories` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=56 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;

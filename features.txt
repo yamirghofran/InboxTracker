@@ -1,5 +1,0 @@
-1. Preview image on receipt!!!
-2. Add all functions outside that centered module 
-3. Download a storage connection string
-4. A new queue is being creater named poison
-5. Update expense should not be a "+" icon
