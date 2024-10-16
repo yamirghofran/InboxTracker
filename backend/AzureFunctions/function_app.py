@@ -254,7 +254,7 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         error_message = f"An error occurred in Login: {str(e)}"
         logging.error(error_message)
-        send_to_dead_letter_queue(error_message, "Login", req.get_json())
+        send_to_dead_letter_queue()
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="Signup")
@@ -333,8 +333,7 @@ def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
         logging.error(f"Error processing dead letter message: {str(e)}. Please ensure the message is properly formatted and valid.")
         # Don't re-raise the exception, as this would cause the message to be retried
 
-
-def send_to_dead_letter_queue(error_message, original_function_name, original_payload):
+def send_to_dead_letter_queue():
         # Set your connection string and queue name
         connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')  # Replace with your connection string if not using env var
         queue_name = "dead-letter-queue"
