@@ -1,6 +1,18 @@
-import { useState, useEffect, useCallback } from 'react'
-import { Plus } from 'lucide-react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Eye, Pencil, Trash } from "lucide-react"
+import { Plus } from 'lucide-react'
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
@@ -26,12 +38,14 @@ import {
   DialogTitle,
 } from "~/components/ui/dialog"
 import { PencilIcon, TrashIcon, Loader2 } from "lucide-react"
-import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
-import { Badge } from "~/components/ui/badge"
 import { Form, useSubmit, useNavigation } from "@remix-run/react"
 import { format } from 'date-fns'
 import { ExpenseWithCategoryName, Category, Expense } from '~/types'
 import { extractExpense } from '~/util';
+import { Pie, PieChart, Cell, ResponsiveContainer } from 'recharts'
+import { Bar, BarChart, XAxis, YAxis, Tooltip, Legend } from 'recharts'
+
+const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884D8']
 
 function Footer() {
   return (
@@ -41,143 +55,8 @@ function Footer() {
   );
 }
 
-
 const HARDCODED_USER_ID = 1
 const sas_token = 'sv=2022-11-02&ss=bfqt&srt=sco&sp=rwdlacupiytfx&se=2025-10-11T17:59:41Z&st=2024-10-11T09:59:41Z&spr=https,http&sig=6y0SwjdB2sDHQWUNVzfrs3WsTQ2lLJ5crw9iITrefEc%3D'
-
-
-const ExpenseCard = ({ expense, onDelete, categories, userId }: { expense: ExpenseWithCategoryName; onDelete: (id: number) => void; categories: Category[]; userId: number }) => {
-  const submit = useSubmit();
-  const navigation = useNavigation();
-  const isDeleting = navigation.formData?.get("intent") === "deleteExpense" && 
-                     navigation.formData?.get("expenseId") === expense.id.toString();
-
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedExpense, setEditedExpense] = useState(expense);
-
-  const handleDelete = useCallback(() => {
-    if (window.confirm("Are you sure you want to delete this expense?")) {
-      onDelete(expense.id);
-    }
-  }, [expense.id, onDelete]);
-
-  const handleEdit = useCallback(() => {
-    setIsEditing(true);
-  }, []);
-
-  const handleEditSubmit = useCallback((updatedExpense: Omit<Expense, "createdAt" | "updatedAt">) => {
-    console.log("Updating expense:", updatedExpense);
-
-    const updatedExpenseWithCategory: ExpenseWithCategoryName = {
-      ...updatedExpense,
-      categoryName: categories.find(cat => cat.id === updatedExpense.categoryId)?.name || 'Unknown Category',
-      createdAt: expense.createdAt,
-      updatedAt: new Date().toISOString()
-    };
-
-    setEditedExpense(updatedExpenseWithCategory);
-
-    submit(
-      { ...updatedExpense, intent: 'updateExpense', expenseId: expense.id },
-      { method: 'post' }
-    );
-    setIsEditing(false);
-  }, [submit, expense.id, categories, expense.createdAt]);
-
-  // Use editedExpense for rendering
-  const displayExpense = editedExpense;
-
-  // Helper function to format the amount
-  const formatAmount = (amount: any) => {
-    if (typeof amount === 'number') {
-      return amount.toFixed(2);
-    } else if (typeof amount === 'string') {
-      const parsedAmount = parseFloat(amount);
-      return isNaN(parsedAmount) ? 'N/A' : parsedAmount.toFixed(2);
-    }
-    return 'N/A';
-  };
-
-  return (
-    <Card className="w-full max-w-2xl mx-auto">
-      <CardHeader className="relative pb-2">
-        <div className="flex justify-between items-start">
-          <h2 className="text-lg font-semibold">{displayExpense.description} - {displayExpense.companyName}</h2>
-          <span className="text-lg font-semibold">${formatAmount(displayExpense.amount)}</span>
-        </div>
-        <Badge variant="secondary" className="mt-2 max-w-fit">
-          {displayExpense.categoryName ?? 'Uncategorized'}
-        </Badge>
-      </CardHeader>
-      <CardContent>
-        <p className="text-sm text-muted-foreground mt-2">
-          {displayExpense.notes ?? 'N/A'}
-        </p>
-      </CardContent>
-      <CardFooter className="flex justify-between items-center">
-        {displayExpense.receiptURL && (
-          <div className="mt-2">
-            <span className="font-medium text-gray-700">Receipt:</span>
-            <a 
-              href={`${displayExpense.receiptURL}?${sas_token}`} 
-              target="_blank" 
-              rel="noopener noreferrer" 
-              className="text-blue-500 hover:underline ml-1"
-            >
-              View Receipt
-            </a>
-          </div>
-        )} 
-        <span className="text-sm text-muted-foreground">
-          {displayExpense.expenseDate ? format(new Date(displayExpense.expenseDate), 'MMM d, yyyy') : 'N/A'}
-        </span>
-        <div className="flex space-x-2">
-          <Sheet open={isEditing} onOpenChange={setIsEditing}>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon" onClick={handleEdit}>
-                <PencilIcon className="h-4 w-4" />
-                <span className="sr-only">Edit</span>
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right">
-              <SheetHeader>
-                <SheetTitle>Edit Expense</SheetTitle>
-                <SheetDescription>
-                  Make changes to your expense here. Click save when you're done.
-                </SheetDescription>
-              </SheetHeader>
-              <ExpenseForm 
-                expense={expense} // Pass the full expense object
-                categories={categories} 
-                onSubmit={handleEditSubmit} 
-                isEditing={true}
-                userId={userId}
-              />
-            </SheetContent>
-          </Sheet>
-          <Form method="post">
-            <input type="hidden" name="intent" value="deleteExpense" />
-            <input type="hidden" name="expenseId" value={expense.id} />
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              type="submit"
-              disabled={isDeleting}
-              onClick={(e) => {
-                e.preventDefault();
-                handleDelete();
-              }}
-            >
-              <TrashIcon className="h-4 w-4" />
-              <span className="sr-only">Delete</span>
-            </Button>
-          </Form>
-        </div>
-      </CardFooter>
-    </Card>
-  )
-}
-
 
 export default function ExpenseDashboard({ 
   initialExpenses, 
@@ -195,16 +74,44 @@ export default function ExpenseDashboard({
   const [isOpen, setIsOpen] = useState(false)
   const submit = useSubmit()
 
+  const pieChartData = useMemo(() => {
+    const data = expenses.reduce((acc, expense) => {
+      if (!acc[expense.categoryName]) {
+        acc[expense.categoryName] = 0
+      }
+      acc[expense.categoryName] += Number(expense.amount)
+      return acc
+    }, {} as Record<string, number>)
+
+    return Object.entries(data).map(([name, value]) => ({ name, value }))
+  }, [expenses])
+
+  const barChartData = useMemo(() => {
+    const data = expenses.reduce((acc, expense) => {
+      const date = new Date(expense.expenseDate)
+      const monthYear = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      if (!acc[monthYear]) {
+        acc[monthYear] = 0
+      }
+      acc[monthYear] += Number(expense.amount)
+      return acc
+    }, {} as Record<string, number>)
+
+    return Object.entries(data)
+      .map(([name, amount]) => ({ name, amount }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [expenses])
+
   useEffect(() => {
     if (actionData?.newExpense) {
       setExpenses(prevExpenses => {
         const category = categories.find(cat => cat.id === actionData.newExpense.categoryId);
         const newExpenseWithCategoryName = {
           ...actionData.newExpense,
+          amount: Number(actionData.newExpense.amount),
           categoryName: category ? category.name : 'Unknown Category'
         };
         const updatedExpenses = [...prevExpenses, newExpenseWithCategoryName];
-        // Sort expenses by date in descending order
         return updatedExpenses.sort((a, b) => new Date(b.expenseDate).getTime() - new Date(a.expenseDate).getTime());
       });
       setIsOpen(false);
@@ -220,81 +127,178 @@ export default function ExpenseDashboard({
         } : exp
       ));
     }
-  }, [actionData, categories]); // Ensure categories is included in the dependency array
-
-  
+  }, [actionData, categories]);
 
   const deleteExpense = useCallback((id: number) => {
-    // Trigger the form submission
     submit(
       { expenseId: id.toString(), intent: 'deleteExpense' },
       { method: 'post' }
     );
-
-    // Optimistically update the state
     setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== id));
   }, [submit]);
 
   return (
     <div className="min-h-screen bg-background p-8">
-      <div className="flex-grow relative"> 
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-black to-gray-600 drop-shadow-lg mb-4">
-              Expense Management Dashboard
-            </h1>
-            <p className="text-gray-500 text-sm">
-              Monitor, track, and optimize your company's expenses effortlessly with our streamlined dashboard.
-            </p>
-          </div>
-          <div className="flex items-center space-x-4"> 
-          <Form method="post">
-          <input type="hidden" name="intent" value="logout" />
-          <Button variant="outline" type="submit">Log out</Button>
-        </Form>
-          <img 
-            src="imgs/profile-user.png" 
-            alt="Dashboard Logo" 
-            className="w-8 h-10 object-contain"
-          />
-        </div>
-        </div>
-
-      <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetTrigger asChild>
-          <Button className="mb-4">
-            <Plus className="mr-2 h-4 w-4" /> Add Expense
-          </Button>
-        </SheetTrigger>
-        <SheetContent side="right">
-          <SheetHeader>
-            <SheetTitle>Add New Expense</SheetTitle>
-            <SheetDescription>
-              Upload a receipt, fill in the expense details, and select a category.
-            </SheetDescription>
-          </SheetHeader>
-        <ExpenseForm categories={categories} userId={userId} />
-        </SheetContent>
-      </Sheet>
-
-      <div className="grid gap-4">
-        {expenses && expenses.length > 0 ? (
-          expenses.map((expense) => (
-            <ExpenseCard 
-              key={expense.id} 
-              expense={expense} 
-              onDelete={deleteExpense} 
-              categories={categories}
-              userId={userId}
-            />
-          ))
-        ) : (
-          <p>No expenses to display.</p>
-        )}
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">Expense Management Dashboard</h1>
+        <Sheet open={isOpen} onOpenChange={setIsOpen}>
+          <SheetTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" /> Add Expense
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right">
+            <SheetHeader>
+              <SheetTitle>Add New Expense</SheetTitle>
+              <SheetDescription>
+                Upload a receipt, fill in the expense details, and select a category.
+              </SheetDescription>
+            </SheetHeader>
+            <ExpenseForm categories={categories} userId={userId} />
+          </SheetContent>
+        </Sheet>
       </div>
-      
-    </div>
-    <Footer />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Expenses by Category</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={pieChartData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {pieChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Expenses per Month</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={barChartData}>
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="amount" fill="#8884d8" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Title</TableHead>
+                <TableHead>Issuer</TableHead>
+                <TableHead>Label</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Receipt</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {expenses.map((expense) => (
+                <TableRow key={expense.id}>
+                  <TableCell className="font-medium">{expense.description}</TableCell>
+                  <TableCell>{expense.companyName}</TableCell>
+                  <TableCell>
+                    <Badge variant="outline">{expense.categoryName}</Badge>
+                  </TableCell>
+                  <TableCell>{format(new Date(expense.expenseDate), 'MMM d, yyyy')}</TableCell>
+                  <TableCell>${Number(expense.amount).toFixed(2)}</TableCell>
+                  <TableCell>{expense.notes}</TableCell>
+                  <TableCell>
+                    {expense.receiptURL ? (
+                      <Button variant="ghost" size="icon">
+                        <a href={`${expense.receiptURL}?${sas_token}`} target="_blank" rel="noopener noreferrer">
+                          <Eye className="h-4 w-4" />
+                        </a>
+                        <span className="sr-only">View Receipt</span>
+                      </Button>
+                    ) : (
+                      <span className="text-muted-foreground">No receipt</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Sheet>
+                        <SheetTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Edit</span>
+                          </Button>
+                        </SheetTrigger>
+                        <SheetContent side="right">
+                          <SheetHeader>
+                            <SheetTitle>Edit Expense</SheetTitle>
+                            <SheetDescription>
+                              Make changes to your expense here. Click save when you're done.
+                            </SheetDescription>
+                          </SheetHeader>
+                          <ExpenseForm 
+                            expense={expense}
+                            categories={categories} 
+                            onSubmit={(updatedExpense) => {
+                              submit(
+                                { ...updatedExpense, intent: 'updateExpense', expenseId: expense.id },
+                                { method: 'post' }
+                              );
+                            }}
+                            isEditing={true}
+                            userId={userId}
+                          />
+                        </SheetContent>
+                      </Sheet>
+                      <Form method="post">
+                        <input type="hidden" name="intent" value="deleteExpense" />
+                        <input type="hidden" name="expenseId" value={expense.id} />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          type="submit"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            if (window.confirm("Are you sure you want to delete this expense?")) {
+                              deleteExpense(expense.id);
+                            }
+                          }}
+                        >
+                          <Trash className="h-4 w-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      </Form>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+      <Footer />
     </div>
   )
 }
@@ -321,7 +325,6 @@ function ExpenseForm({
   const [receiptURL, setReceiptURL] = useState<string | null>(expense?.receiptURL ?? null)
   const [isLoadingExpense, setIsLoadingExpense] = useState(false)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
-
 
   useEffect(() => {
     if (!isEditing) {
@@ -350,7 +353,6 @@ function ExpenseForm({
         onSubmit(expenseData as Omit<Expense, 'createdAt' | 'updatedAt'>)
       }
     }
-    // For new expenses, we'll let the form submit normally
   }
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -362,7 +364,6 @@ function ExpenseForm({
         setReceiptURL(fileContent);
         setPreviewUrl(fileContent);
 
-        // Only process if fields are empty
         if (!amount && !description && !companyName && !expenseDate && !notes && !categoryId) {
           setIsLoadingExpense(true);
           extractExpense(fileContent).then(expenseData => {
