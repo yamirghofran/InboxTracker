@@ -1,12 +1,7 @@
 {
   "IsEncrypted": false,
   "Values": {
-    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;EndpointSuffix=core.windows.net;AccountName=theboyz0;AccountKey=qMY/8YinRjASwY/+h1ht68P+DjtFKPdSffEWNJjC61lrhThjkXcAloLYw+yX3gZJPiT+dSBYTAhN+AStDO5PGA==",
-    "FUNCTIONS_WORKER_RUNTIME": "python",
-    "AZURE_STORAGE_CONNECTION_STRING": "DefaultEndpointsProtocol=https;AccountName=theboyz0;AccountKey=qMY/8YinRjASwY/+h1ht68P+DjtFKPdSffEWNJjC61lrhThjkXcAloLYw+yX3gZJPiT+dSBYTAhN+AStDO5PGA==;EndpointSuffix=core.windows.net",
-    "DB_HOST": "iestlab0001.westeurope.cloudapp.azure.com",
-    "DB_USER": "CC_A_7",
-    "DB_PASSWORD": "wLrEjzbaq0ZV4X1gufsX3XPQCitCkMWYcKxMIOlSRU0",
-    "DB_NAME": "CC_A_7"
+    "AzureWebJobsStorage": "YOUR_STORAGE_CONNECTION_STRING",
+    "FUNCTIONS_WORKER_RUNTIME": "python"
   }
 }
