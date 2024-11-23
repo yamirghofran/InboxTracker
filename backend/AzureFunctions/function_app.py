@@ -16,7 +16,7 @@ import traceback
 app = func.FunctionApp()
 
 @app.function_name(name="CreateExpense")
-@app.route(route="CreateExpense", methods=["POST"])
+@app.route(route="CreateExpense", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
     """
     Creates a new expense and connects to blob storage to upload the receipt
@@ -126,7 +126,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="DeleteExpense") # Defines name of the function within the function app
-@app.route(route="DeleteExpense", methods=["DELETE"]) # Defines HTTP route for function invokation
+@app.route(route="DeleteExpense", methods=["DELETE"], auth_level=func.AuthLevel.FUNCTION) # Defines HTTP route for function invokation
 def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
     """
     Delete a receipt from the database
@@ -158,7 +158,7 @@ def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 @app.function_name(name="UpdateExpense")
-@app.route(route="UpdateExpense", methods=["PUT"])
+@app.route(route="UpdateExpense", methods=["PUT"], auth_level=func.AuthLevel.FUNCTION)
 def UpdateExpense(req: func.HttpRequest) -> func.HttpResponse:
     try:
         req_body = req.get_json()
@@ -199,7 +199,7 @@ def UpdateExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
     
 @app.function_name(name="GetCategories")
-@app.route(route="GetCategories", methods=["GET"])
+@app.route(route="GetCategories", methods=["GET"], auth_level=func.AuthLevel.FUNCTION)
 def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
     """
     Get all the the categories in the database
@@ -229,7 +229,7 @@ def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
     
 
 @app.function_name(name="GetExpenses")
-@app.route(route="GetExpenses")
+@app.route(route="GetExpenses", auth_level=func.AuthLevel.FUNCTION)
 def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
     try:
         userId = req.params.get('userId')
@@ -261,7 +261,7 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
     
 
 @app.function_name(name="Login")
-@app.route(route="Login", methods=["POST"])
+@app.route(route="Login", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 async def Login(req: func.HttpRequest) -> func.HttpResponse:
     try:
         req_body = req.get_json()
@@ -290,7 +290,7 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="Signup")
-@app.route(route="Signup", methods=["POST"])
+@app.route(route="Signup", methods=["POST"], auth_level=func.AuthLevel.FUNCTION)
 async def Signup(req: func.HttpRequest) -> func.HttpResponse:
     try:
         req_body = req.get_json()
