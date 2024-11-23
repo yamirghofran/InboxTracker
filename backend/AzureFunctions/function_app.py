@@ -44,6 +44,8 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
         if not all([userId, amount, expenseDate]):
             return func.HttpResponse("UserID, Amount, and ExpenseDate are required", status_code=400)
         
+        logging.info(f"Received expense data: {expense_data}")
+        
         # Initialize receipt_url before using it
         receipt_url = None
 
@@ -74,6 +76,7 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
                     content_settings=ContentSettings(content_type=content_type)
                 )
                 receipt_url = blob_client.url
+                logging.info(f"Receipt uploaded to blob storage: {receipt_url}")
 
             except ResourceExistsError:
                 return func.HttpResponse("A blob with this name already exists", status_code=400)
@@ -89,6 +92,8 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
 
         if new_expense_id is None:
             return func.HttpResponse("Failed to retrieve the new expense ID", status_code=500)
+        
+        logging.info(f"Database insert successful. New expense ID: {new_expense_id}")
 
         new_expense = {
             "id": new_expense_id,
@@ -132,6 +137,8 @@ def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
 
         if not expenseId or not userId: # If no parameters are passed through the HTTPS request
             return func.HttpResponse("id and UserID are required", status_code=400)
+        
+        logging.info(f"Received expense ID: {expenseId} and UserID: {userId}")
 
         query = "DELETE FROM Expenses WHERE id = %s AND UserID = %s"
         result = execute_query(query, (expenseId, userId))
@@ -139,6 +146,8 @@ def DeleteExpense(req: func.HttpRequest) -> func.HttpResponse:
         # Access rowcount as a key in the dictionary
         if result['rowcount'] == 0:
             return func.HttpResponse("Expense not found or user not authorized", status_code=404)
+        
+        logging.info(f"Database delete successful. Expense ID: {expenseId} and UserID: {userId}")
 
         return func.HttpResponse("Expense deleted successfully")
 
@@ -160,11 +169,13 @@ def UpdateExpense(req: func.HttpRequest) -> func.HttpResponse:
         description = req_body.get('description')
         companyName = req_body.get('companyName')
         notes = req_body.get('notes')
-        receiptURL = req_body.get('receiptURL')
+        receiptURL = req_body.get('receiptURL') # is this needed?
         expenseDate = req_body.get('expenseDate')
 
         if not all([expenseId, userId]):
             return func.HttpResponse("ExpenseID and UserID are required", status_code=400)
+        
+        logging.info(f"Received expense ID: {expenseId} and UserID: {userId}")
 
         query = """
         UPDATE Expenses
@@ -176,6 +187,8 @@ def UpdateExpense(req: func.HttpRequest) -> func.HttpResponse:
 
         if result['rowcount'] == 0:
             return func.HttpResponse("Expense not found or user not authorized", status_code=404)
+        
+        logging.info(f"Database update successful. Expense ID: {expenseId} and UserID: {userId}")
 
         return func.HttpResponse("Expense updated successfully")
 
@@ -200,7 +213,8 @@ def GetCategories(req: func.HttpRequest) -> func.HttpResponse:
             if isinstance(obj, datetime.datetime):
                 return obj.isoformat()
             raise TypeError("Type not serializable")
-
+        
+        logging.info(f"Database query successful. Result: {result}")
         # Returns the result of the query as a JSON response with datetime serialization
         return func.HttpResponse(
             json.dumps(result, default=datetime_serializer),
@@ -235,6 +249,8 @@ def GetExpenses(req: func.HttpRequest) -> func.HttpResponse:
         for expense in result:
             expense['categoryName'] = expense['categoryName'] or 'Uncategorized'
 
+        logging.info(f"Database query successful. Result: {result}")
+
         return func.HttpResponse(json.dumps(result, default=str), mimetype="application/json")
 
     except Exception as e:
@@ -258,6 +274,7 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
         user_id = await validateCredentials(email, password)
 
         if user_id:
+            logging.info(f"Login successful. User ID: {user_id}")
             return func.HttpResponse(json.dumps({"id": user_id, "email": email}), mimetype="application/json")
         else:
             raise Exception("Invalid email or password")
