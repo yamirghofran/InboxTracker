@@ -9,6 +9,7 @@ from azure.storage.blob import BlobServiceClient, ContentSettings
 from azure.core.exceptions import ResourceExistsError
 from shared.db_utils import execute_query, validateCredentials, createUser
 from azure.storage.queue import QueueClient
+import traceback
 
 
 
@@ -21,6 +22,12 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
     Creates a new expense and connects to blob storage to upload the receipt
     """
     try:
+        # Validate request before processing
+        if not req.form:
+            error_msg = "Invalid request format - missing form data"
+            send_to_dead_letter_queue(error_msg, "CreateExpense", req.get_body())
+            return func.HttpResponse(error_msg, status_code=400)
+
         # Get the multipart form data
         form = req.form
 
@@ -98,13 +105,19 @@ def CreateExpense(req: func.HttpRequest) -> func.HttpResponse:
         return func.HttpResponse(json.dumps(new_expense), status_code=201, mimetype="application/json")
 
     except Exception as e:
-
         error_message = f"An error occurred in CreateExpense: {str(e)}"
         logging.error(error_message)
         
-        # Send to dead-letter-queue
-        send_to_dead_letter_queue(error_message, "CreateExpense", req.get_json())
-
+        # Send full context to dead letter queue
+        send_to_dead_letter_queue(
+            error_message=str(e),
+            function_name="CreateExpense",
+            payload={
+                "body": req.get_body().decode() if req.get_body() else None,
+                "headers": dict(req.headers),
+                "params": dict(req.params)
+            }
+        )
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="DeleteExpense") # Defines name of the function within the function app
@@ -245,8 +258,6 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
         user_id = await validateCredentials(email, password)
 
         if user_id:
-            
-            
             return func.HttpResponse(json.dumps({"id": user_id, "email": email}), mimetype="application/json")
         else:
             raise Exception("Invalid email or password")
@@ -254,7 +265,11 @@ async def Login(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         error_message = f"An error occurred in Login: {str(e)}"
         logging.error(error_message)
-        send_to_dead_letter_queue()
+        send_to_dead_letter_queue(
+            error_message=str(e),
+            function_name="Login",
+            payload={"email": email} if 'email' in locals() else None
+        )
         return func.HttpResponse(f"An error occurred: {str(e)}", status_code=500)
 
 @app.function_name(name="Signup")
@@ -305,79 +320,21 @@ async def Signup(req: func.HttpRequest) -> func.HttpResponse:
         )
     
 
-@app.function_name(name="ProcessDeadLetterQueue")
-@app.queue_trigger(arg_name="msg", queue_name="dead-letter-queue", connection="AzureWebJobsStorage")
-def ProcessDeadLetterQueue(msg: func.QueueMessage) -> None:
+def send_to_dead_letter_queue(error_message: str, function_name: str, payload=None):
     try:
-        # Log the received message
-        logging.info(f"Received message from dead-letter-queue: {msg.get_body().decode('utf-8')}")
+        connect_str = os.environ['AzureWebJobsStorage'] 
+        queue_client = QueueClient.from_connection_string(connect_str, "dead-letter-queue")
 
-        # Parse the message (assuming it's JSON)
-        message_body = json.loads(msg.get_body().decode('utf-8'))
-        logging.info(f"Parsed message body: {message_body}")
-
-        # Store the message in blob storage
-        connect_str = os.environ['AZURE_STORAGE_CONNECTION_STRING']
-        blob_service_client = BlobServiceClient.from_connection_string(connect_str)
-        container_name = "dead-letter-messages"
-
-        # Use a unique name for the blob
-        blob_name = f"dead_letter_{datetime.datetime.now().isoformat()}.json"
-        blob_client = blob_service_client.get_blob_client(container=container_name, blob=blob_name)
-        
-        # Upload the message content
-        blob_client.upload_blob(json.dumps(message_body))
-        logging.info(f"Stored dead letter message in blob: {blob_name}")
-
-    except Exception as e:
-        logging.error(f"Error processing dead letter message: {str(e)}. Please ensure the message is properly formatted and valid.")
-        # Don't re-raise the exception, as this would cause the message to be retried
-
-def send_to_dead_letter_queue():
-        # Set your connection string and queue name
-        connection_string = os.getenv('AZURE_STORAGE_CONNECTION_STRING')  # Replace with your connection string if not using env var
-        queue_name = "dead-letter-queue"
-
-        # Create a QueueClient
-        queue_client = QueueClient.from_connection_string(connection_string, queue_name)
-
-        # Message to send (can be JSON or plain text)
         message_content = {
-            "order_id": "12345",
-            "status": "failed",
-            "error": "Invalid payment details"
-        }
-
-        # Convert the message to JSON format and send it
-        message_json = json.dumps(message_content)
-        queue_client.send_message(message_json)
-
-        print(f"Message sent to queue {queue_name}: {message_json}")
-
-
-"""def send_to_dead_letter_queue(error_message, original_function_name, original_payload):
-    try:
-        # Validate if the original_payload is JSON serializable
-        try:
-            json.dumps(original_payload)  # This will raise a TypeError if the payload is not serializable
-        except (TypeError, ValueError) as json_err:
-            logging.error(f"Invalid JSON payload: {str(json_err)}")
-            original_payload = {"error": "Invalid payload, unable to serialize."}
-        
-        connect_str = os.environ['AzureWebJobsStorage']
-        queue_name = "dead-letter-queue"
-        queue_client = QueueClient.from_connection_string(connect_str, queue_name)
-
-        # Construct the message content
-        message_content = {
+            "timestamp": datetime.datetime.utcnow().isoformat(),
             "error": str(error_message),
-            "function": original_function_name,
-            "payload": original_payload,
+            "function": function_name,
+            "stack_trace": traceback.format_exc(),
+            "payload": str(payload) if payload else None  # Convert payload to string by default
         }
 
-        message_json = json.dumps(message_content)
-        logging.info(f"Sending message to dead-letter-queue: {message_json}")
-        queue_client.send_message(message_json)
-        logging.info("Message sent successfully")
+        queue_client.send_message(json.dumps(message_content))
+        logging.info(f"Error message sent to dead-letter-queue for function {function_name}")
+
     except Exception as e:
-        logging.error(f"Failed to send message to dead-letter-queue: {str(e)}")"""
+        logging.error(f"Failed to send to dead-letter-queue: {str(e)}")
