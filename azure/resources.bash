@@ -48,3 +48,4 @@ func azure functionapp publish $FUNCTION_APP_NAME --python
 func azure functionapp publish $FUNCTION_APP_NAME --publish-settings-only   
 
 # Note: we created our logic app manually from the Azure Portal. Thus its absence from this script.
+# Note 2: this is the collection of bash commands that we used to create the resources. This script wasnt executed for their creation (we neeeded to populate the funcs before publishing them, for instance).
