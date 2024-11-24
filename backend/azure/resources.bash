@@ -13,7 +13,7 @@ export FUNCTION_APP_NAME="InboxTracker"
 func AzureFunctions init --python -m V2
 cd AzureFunctions
 
-func new --template "Http Trigger" --name "CreateExpense" --auth-level "Function" # We created a single function and added all others inside its module; Done to concentrate all serverless funcs code in a single place.
+func new --template "Http Trigger" --name "CreateExpense" --auth-level "Function"  #We've moved away from a single folder and __init__.py for each function and instead put all the functions in a single function_app.py file at the root level, for acleaner approach.
 pip3 install --no-cache-dir -r requirements.txt
 
 # 2) Logging in Azure
