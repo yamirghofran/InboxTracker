@@ -46,3 +46,5 @@ curl http://localhost:$port/api/GetExpenses # Examples for one possible endpoint
 # 4) Deploying the function app
 func azure functionapp publish $FUNCTION_APP_NAME --python
 func azure functionapp publish $FUNCTION_APP_NAME --publish-settings-only   
+
+# Note: we created our logic app manually from the Azure Portal. Thus its absence from this script.
