@@ -3,7 +3,7 @@ import json
 
 """
 MAKING A GET REQUEST TO THE AZURE FUNCTION:
-curl https://inboxtracker.azurewebsites.net/api/GetExpenses?code=DDcpu5KsbITe9zqwhb5SNVRg7KrcscLFlDee4VzPDy6vAzFuCh_l6w%3D%3D&userId=1
+curl "https://inboxtracker.azurewebsites.net/api/GetExpenses?code=DDcpu5KsbITe9zqwhb5SNVRg7KrcscLFlDee4VzPDy6vAzFuCh_l6w%3D%3D&userId=1"
 """
 
 AZURE_FUNCTION_BASE_URL = 'https://inboxtracker.azurewebsites.net/api'
@@ -21,8 +21,7 @@ def addExpense(user_id: int, expense: dict):
     print(f"Sending request to: {url}")
     print(f"Request data: {form_data}")
     
-    response = requests.post(url, 
-                             data=form_data)
+    response = requests.post(url)#, data=form_data)
     
     # Debug: Print the response
     print(f"Status code: {response.status_code}")

@@ -149,7 +149,7 @@ export default function LoginForm() {
   {/* Right side: Image (75% width) */}
   <div className="w-3/4">
     <img
-      src="imgs/office.jpg"
+      src="https://d4ywmces95mzh.cloudfront.net/office.jpg"
       alt="Corporate Illustration"
       className="h-full w-full object-cover"
     />
