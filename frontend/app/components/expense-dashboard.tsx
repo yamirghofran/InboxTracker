@@ -141,22 +141,30 @@ export default function ExpenseDashboard({
     <div className="min-h-screen bg-background p-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold">Expense Management Dashboard</h1>
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" /> Add Expense
+        <div className="flex gap-4 items-center">
+          <Form method="post">
+            <input type="hidden" name="intent" value="logout" />
+            <Button variant="outline" type="submit">
+              Logout
             </Button>
-          </SheetTrigger>
-          <SheetContent side="right">
-            <SheetHeader>
-              <SheetTitle>Add New Expense</SheetTitle>
-              <SheetDescription>
-                Upload a receipt, fill in the expense details, and select a category.
-              </SheetDescription>
-            </SheetHeader>
-            <ExpenseForm categories={categories} userId={userId} />
-          </SheetContent>
-        </Sheet>
+          </Form>
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" /> Add Expense
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right">
+              <SheetHeader>
+                <SheetTitle>Add New Expense</SheetTitle>
+                <SheetDescription>
+                  Upload a receipt, fill in the expense details, and select a category.
+                </SheetDescription>
+              </SheetHeader>
+              <ExpenseForm categories={categories} userId={userId} />
+            </SheetContent>
+          </Sheet>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
