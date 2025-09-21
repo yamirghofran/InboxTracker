@@ -1,5 +1,5 @@
 # InboxTracker - Expense Management System
-
+<img width="1600" height="981" alt="image" src="https://github.com/user-attachments/assets/169eaa55-84cf-4fa5-a721-5246645011fb" />
 A comprehensive expense management application built with modern web technologies, featuring AI-powered receipt processing, real-time data visualization, and seamless cloud integration.
 
 ## Features
